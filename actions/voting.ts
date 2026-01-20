@@ -1,6 +1,7 @@
 'use server'
 
 import { supabase } from "@/lib/supabase"
+import { supabaseAdmin } from "@/lib/supabase-admin" // Import admin client
 import { triangulationService } from "@/services/triangulation"
 import { triangulateRound } from "./triangulate"
 
@@ -19,7 +20,8 @@ export async function startAreaVoting(roundId: string) {
         const options = await triangulationService.findBestStations(members)
 
         // Update Round: save options and move to 'voting' stage
-        const { error } = await supabase
+        const db = supabaseAdmin || supabase; // Prefer admin
+        const { error } = await db
             .from('rounds')
             .update({
                 stage: 'voting',
@@ -35,7 +37,7 @@ export async function startAreaVoting(roundId: string) {
     }
 }
 
-// 2. Member casts a vote
+// 2. Member casts a vote (Guests can cast vote via Anon, usually allowed by RLS)
 export async function castVote(memberId: string, areaId: string) {
     const { data, error } = await supabase
         .from('party_members')
@@ -61,13 +63,11 @@ export async function finalizeVoting(roundId: string, winningAreaId: string) {
     if (!round) throw new Error("Round not found")
 
     // 2. Find the selected area object
-    // Loose comparison (string/number) just in case
     console.log("Finalizing Voting. Winning ID:", winningAreaId, typeof winningAreaId);
-    console.log("Available Options:", JSON.stringify(round.area_options, null, 2));
 
     const selectedArea = round.area_options?.find((a: any) => String(a.id) === String(winningAreaId))
     if (!selectedArea) {
-        console.error(`Area ${winningAreaId} not found in options. Available IDs:`, round.area_options?.map((a: any) => a.id));
+        console.error(`Area ${winningAreaId} not found. Options:`, round.area_options?.map((a: any) => a.id));
         throw new Error(`Selected area configuration not found (ID: ${winningAreaId})`)
     }
 
@@ -79,7 +79,8 @@ export async function finalizeVoting(roundId: string, winningAreaId: string) {
 
     // 4. Update stage to pub_voting (Intermediate stage)
     console.log("Updating stage to pub_voting...");
-    const { error } = await supabase
+    const db = supabaseAdmin || supabase; // Prefer admin
+    const { error } = await db
         .from('rounds')
         .update({ stage: 'pub_voting' })
         .eq('id', roundId)
@@ -93,11 +94,12 @@ export async function finalizeVoting(roundId: string, winningAreaId: string) {
 
 // 4. Host confirms the winning pub
 export async function confirmPubWinner(roundId: string, pubId: string) {
-    // Fetch current settings to preserve them
+    // Fetch current settings
     const { data: round } = await supabase.from('rounds').select('settings').eq('id', roundId).single()
     const currentSettings = round?.settings || {}
 
-    const { error } = await supabase
+    const db = supabaseAdmin || supabase; // Prefer admin
+    const { error } = await db
         .from('rounds')
         .update({
             stage: 'results',
