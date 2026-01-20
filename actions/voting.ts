@@ -120,3 +120,15 @@ export async function confirmPubWinner(roundId: string, pubId: string) {
     if (error) throw error
     return { success: true }
 }
+
+// 5. Host ends the round
+export async function endRound(roundId: string) {
+    const db = supabaseAdmin || supabase;
+    const { error } = await db
+        .from('rounds')
+        .update({ status: 'ended' })
+        .eq('id', roundId)
+
+    if (error) throw error
+    return { success: true }
+}

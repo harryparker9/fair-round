@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button'
 import { ResultsView } from '@/components/results-view'
 import { PubRecommendation, AreaOption } from '@/types'
 import { supabase } from '@/lib/supabase'
-import { startAreaVoting } from '@/actions/voting'
+import { startAreaVoting, endRound } from '@/actions/voting'
 import { AreaVotingView } from '@/components/area-voting-view'
 import { cn } from '@/lib/utils'
+import { useRouter } from 'next/navigation'
+import { LogOut } from 'lucide-react'
 
 interface RoundManagerProps {
     roundId: string
@@ -16,11 +18,10 @@ interface RoundManagerProps {
 }
 
 import { PubVotingView } from '@/components/pub-voting-view'
-import { confirmPubWinner } from '@/actions/voting' // Auto-import if possible, else I'll add import manually above
-
-// ... existing imports
+import { confirmPubWinner } from '@/actions/voting'
 
 export function RoundManager({ roundId, code }: RoundManagerProps) {
+    const router = useRouter()
     const [joined, setJoined] = useState(false)
     const [loading, setLoading] = useState(true)
     const [recommendations, setRecommendations] = useState<PubRecommendation[] | null>(null)
@@ -31,6 +32,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
 
     // Data States
     const [stage, setStage] = useState<'lobby' | 'voting' | 'pub_voting' | 'results'>('lobby')
+    const [roundStatus, setRoundStatus] = useState<string>('active')
     const [areaOptions, setAreaOptions] = useState<AreaOption[]>([])
     const [members, setMembers] = useState<any[]>([])
     const [roundHostId, setRoundHostId] = useState<string | null>(null)
@@ -40,8 +42,8 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
     const [myMemberId, setMyMemberId] = useState<string | null>(null)
     const [myUserId, setMyUserId] = useState<string | null>(null)
 
+    // 1. Check identity
     useEffect(() => {
-        // 1. Check local storage
         const storedJoined = localStorage.getItem(`fair-round-joined-${roundId}`)
         const storedMemberId = localStorage.getItem(`fair-round-member-id-${roundId}`)
         const storedUserId = localStorage.getItem('fair_round_user_id')
@@ -49,14 +51,16 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
         if (storedJoined) setJoined(true)
         if (storedMemberId) setMyMemberId(storedMemberId)
         if (storedUserId) setMyUserId(storedUserId)
-
         setLoading(false)
+    }, [roundId])
 
-        // 2. Fetch initial Data (Round + Members)
+    // 2. Fetch Data & Identity (Host check)
+    useEffect(() => {
         const initData = async () => {
             const { data: roundData } = await supabase.from('rounds').select('*').eq('id', roundId).single()
             if (roundData) {
                 setStage(roundData.stage)
+                setRoundStatus(roundData.status)
                 setRoundHostId(roundData.host_id)
                 setAreaOptions(roundData.area_options || [])
 
@@ -64,7 +68,6 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                     setWinningPubId(roundData.settings.winning_pub_id)
                 }
 
-                // If results exist (in pub_voting or results stage), fetch cache
                 if (roundData.stage === 'results' || roundData.stage === 'pub_voting') {
                     const { data: cache } = await supabase.from('pub_cache').select('results').eq('round_id', roundId).single()
                     if (cache) setRecommendations(cache.results)
@@ -75,8 +78,10 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
             if (memData) setMembers(memData)
         }
         initData()
+    }, [roundId])
 
-        // 3. Subscribe to Realtime (Members AND Round)
+    // 3. Realtime Subscription
+    useEffect(() => {
         const channel = supabase
             .channel(`round_lobby_${roundId}`)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'party_members', filter: `round_id=eq.${roundId}` },
@@ -93,6 +98,8 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                     console.log("Realtime Round Update:", payload)
                     const newRound = payload.new
                     setStage(newRound.stage)
+                    setRoundStatus(newRound.status)
+
                     if (newRound.area_options) setAreaOptions(newRound.area_options)
                     if (newRound.settings?.winning_pub_id) setWinningPubId(newRound.settings.winning_pub_id)
 
@@ -111,6 +118,17 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
         return () => { supabase.removeChannel(channel) }
     }, [roundId, recommendations])
 
+    // 4. Force Exit if round ended
+    useEffect(() => {
+        if (roundStatus === 'ended') {
+            alert("The host has ended the party. Returning to home.")
+            localStorage.removeItem(`fair-round-joined-${roundId}`)
+            localStorage.removeItem(`fair-round-member-id-${roundId}`)
+            router.push('/')
+        }
+    }, [roundStatus, roundId, router])
+
+
     const handleJoin = (memberId: string) => {
         setJoined(true)
         setMyMemberId(memberId)
@@ -118,6 +136,29 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
 
     // HOST ACTIONS
     const isHost = myUserId === roundHostId
+
+    const handleExit = async () => {
+        if (isHost) {
+            if (componentStatus === 'ended') return; // already ending
+            if (!confirm("As Host, exiting will END the party for everyone. Are you sure?")) return;
+
+            try {
+                // @ts-ignore
+                await endRound(roundId)
+                // Local cleanup handled by effect or manually below
+                localStorage.removeItem(`fair-round-joined-${roundId}`)
+                localStorage.removeItem(`fair-round-member-id-${roundId}`)
+                router.push('/')
+            } catch (e) {
+                alert("Failed to end party")
+            }
+        } else {
+            if (!confirm("Leave this party?")) return;
+            localStorage.removeItem(`fair-round-joined-${roundId}`)
+            localStorage.removeItem(`fair-round-member-id-${roundId}`)
+            router.push('/')
+        }
+    }
 
     const handleStartVoting = async () => {
         setGeneratingAreas(true)
@@ -141,7 +182,6 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
     const handleConfirmPub = async (pubId: string) => {
         try {
             await confirmPubWinner(roundId, pubId)
-            // Optimistic update
             setWinningPubId(pubId)
             setStage('results')
         } catch (e) {
@@ -160,20 +200,37 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
 
     const uniqueMembers = Array.from(new Map(members.map(m => [m.id, m])).values())
 
-    // --- RENDER ---
+    // Used for preventing double clicks
+    const componentStatus = roundStatus;
 
     return (
         <div className="w-full flex flex-col items-center">
             {/* Persistent Header */}
-            <div className="fixed top-0 left-0 right-0 bg-charcoal/90 backdrop-blur-md p-4 z-50 border-b border-white/10 flex justify-between items-center px-6 shadow-lg">
-                <div className="text-white font-bold text-lg tracking-wide">
-                    ROUND: <span className="text-pint-gold font-mono">{code}</span>
+            <div className="fixed top-0 left-0 right-0 bg-charcoal/90 backdrop-blur-md p-3 z-50 border-b border-white/10 flex justify-between items-center px-4 shadow-lg h-16">
+                {/* Left: Code */}
+                <div className="flex flex-col">
+                    <span className="text-[10px] text-white/50 uppercase tracking-wider">Round Code</span>
+                    <span className="text-pint-gold font-mono text-xl font-bold leading-none">{code}</span>
                 </div>
-                {/* Stage Indicator or Host Badge */}
-                {isHost && <span className="text-xs bg-pint-gold/20 text-pint-gold px-2 py-1 rounded font-bold">You are Host</span>}
+
+                {/* Center: Stage Name (Optional, but nice) */}
+                <div className="absolute left-1/2 transform -translate-x-1/2">
+                    {isHost && <span className="text-[10px] bg-pint-gold/20 text-pint-gold px-2 py-0.5 rounded font-bold border border-pint-gold/30">HOST</span>}
+                </div>
+
+                {/* Right: Exit */}
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleExit}
+                    className="text-white/60 hover:text-red-400 hover:bg-red-900/20 p-2"
+                >
+                    <LogOut className="w-5 h-5" />
+                    <span className="sr-only">Exit</span>
+                </Button>
             </div>
 
-            <div className="mt-20 w-full max-w-md p-4 space-y-8 animate-fade-in-up flex flex-col items-center">
+            <div className="mt-20 w-full max-w-md p-4 space-y-8 animate-fade-in-up flex flex-col items-center pb-20">
 
                 {/* 1. RESULTS VIEW */}
                 {stage === 'results' ? (
@@ -217,9 +274,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                         isHost={isHost}
                                         onVote={(areaId) => myMemberId && console.log("Vote cast", areaId)} // Optimistic handled in View
                                         onStageChange={async (newStage) => {
-                                            // This callback is triggered by finalizeVoting
-                                            // In new flow, finalizeVoting sets stage to 'pub_voting'
-                                            setStage(newStage as any) // 'pub_voting'
+                                            setStage(newStage as any)
                                         }}
                                     />
                                 </div>
@@ -286,13 +341,6 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                         <div className="flex justify-center gap-4">
                                             <Button variant="ghost" className="text-white/30 hover:text-white" onClick={refreshMembers}>
                                                 ↻ Refresh
-                                            </Button>
-                                            <Button variant="ghost" className="text-white/30 hover:text-white" onClick={() => {
-                                                localStorage.removeItem(`fair-round-joined-${roundId}`)
-                                                localStorage.removeItem(`fair-round-member-id-${roundId}`)
-                                                setJoined(false)
-                                            }}>
-                                                Leave Round
                                             </Button>
                                         </div>
                                     </div>
