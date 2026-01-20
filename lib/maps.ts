@@ -27,7 +27,7 @@ export const maps = {
             params: {
                 origins,
                 destinations,
-                mode,
+                mode: mode as any,
                 key
             }
         });
@@ -56,7 +56,7 @@ export const maps = {
             const res = await client.reverseGeocode({
                 params: {
                     latlng: { lat, lng },
-                    result_type: ['neighborhood', 'sublocality', 'political'],
+                    result_type: ['neighborhood', 'sublocality', 'political'] as any,
                     key
                 }
             });
@@ -64,9 +64,9 @@ export const maps = {
             if (res.data.results.length > 0) {
                 // Try to find the most specific 'neighborhood' component
                 const result = res.data.results[0];
-                const neighborhood = result.address_components.find(c => c.types.includes('neighborhood'))?.long_name;
-                const sublocality = result.address_components.find(c => c.types.includes('sublocality'))?.long_name;
-                const locality = result.address_components.find(c => c.types.includes('locality'))?.long_name;
+                const neighborhood = result.address_components.find(c => c.types.includes('neighborhood' as any))?.long_name;
+                const sublocality = result.address_components.find(c => c.types.includes('sublocality' as any))?.long_name;
+                const locality = result.address_components.find(c => c.types.includes('locality' as any))?.long_name;
 
                 return neighborhood || sublocality || locality || "London";
             }

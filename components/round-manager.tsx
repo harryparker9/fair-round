@@ -107,7 +107,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
 
             if (res.success) {
                 // Force local update immediately (don't wait for Realtime)
-                setAreaOptions(res.options)
+                setAreaOptions(res.options as AreaOption[])
                 setStage('voting')
             } else {
                 alert(`Error: ${res.error}`)
