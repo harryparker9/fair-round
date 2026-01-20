@@ -52,13 +52,19 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
     const handleFinalize = async (areaId: string) => {
         setIsFinalizing(true)
         try {
-            await finalizeVoting(roundId, areaId)
-            // Success! Optimistically switch stage
-            if (onStageChange) onStageChange('results')
+            // @ts-ignore
+            const res = await finalizeVoting(roundId, areaId)
+            if (res.success) {
+                // Success! Optimistically switch stage
+                if (onStageChange) onStageChange('results') // This actually maps to 'pub_voting' in manager
+            } else {
+                setIsFinalizing(false)
+                alert(`Server Error: ${res.error}`)
+            }
         } catch (err: any) {
             console.error("Finalize failed", err)
             setIsFinalizing(false)
-            alert(`Failed to find pubs: ${err.message || "Unknown error"}. Check your API Keys.`)
+            alert(`Network Error: ${err.message || "Unknown error"}`)
         }
     }
 
