@@ -35,17 +35,25 @@ export const maps = {
 
     // Find candidates around a point
     searchNearbyPubs: async (location: { lat: number, lng: number }, radius: number = 1000) => {
-        if (!key) throw new Error("Missing Google Maps API Key");
+        if (!key) {
+            console.error("GOOGLE_MAPS_API_KEY is missing on server.");
+            throw new Error("Missing Google Maps API Key on Server");
+        }
 
-        return client.placesNearby({
-            params: {
-                location,
-                radius,
-                type: 'bar', // or 'point_of_interest' with keyword 'pub'
-                keyword: 'pub',
-                key
-            }
-        })
+        try {
+            return await client.placesNearby({
+                params: {
+                    location,
+                    radius,
+                    type: 'bar', // or 'point_of_interest' with keyword 'pub'
+                    keyword: 'pub',
+                    key
+                }
+            })
+        } catch (e: any) {
+            console.error("Google Maps Places API Error:", e.response?.data || e.message);
+            throw new Error("Maps API Failed: " + (e.response?.data?.error_message || e.message));
+        }
     },
 
     // Get area name from coordinates (Reverse Geocoding)

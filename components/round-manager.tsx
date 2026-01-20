@@ -273,13 +273,18 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                             )}
                                         </div>
 
-                                        <Button variant="ghost" className="text-white/30 hover:text-white" onClick={() => {
-                                            localStorage.removeItem(`fair-round-joined-${roundId}`)
-                                            localStorage.removeItem(`fair-round-member-id-${roundId}`)
-                                            setJoined(false)
-                                        }}>
-                                            Leave Round
-                                        </Button>
+                                        <div className="flex justify-center gap-4">
+                                            <Button variant="ghost" className="text-white/30 hover:text-white" onClick={refreshMembers}>
+                                                ↻ Refresh
+                                            </Button>
+                                            <Button variant="ghost" className="text-white/30 hover:text-white" onClick={() => {
+                                                localStorage.removeItem(`fair-round-joined-${roundId}`)
+                                                localStorage.removeItem(`fair-round-member-id-${roundId}`)
+                                                setJoined(false)
+                                            }}>
+                                                Leave Round
+                                            </Button>
+                                        </div>
                                     </div>
                                 )}
             </div>

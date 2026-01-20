@@ -76,7 +76,8 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
             <div className="flex flex-col gap-4">
                 {options.map((area, index) => {
                     const votes = getVoteCount(area.id)
-                    const isSelected = hasVoted === area.id
+                    // Robust string comparison for mixed types (number vs string)
+                    const isSelected = String(hasVoted) === String(area.id)
                     const isExpanded = expandedAreaId === area.id
 
                     return (
