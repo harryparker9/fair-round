@@ -69,7 +69,7 @@ export function CreateRoundCard() {
                 >
                     {loading ? 'Initiating...' : 'Create New Round'}
                 </Button>
-                <p className="text-xs text-white/40">Powered by Gemini AI • 2026 Edition</p>
+                <p className="text-xs text-white/40">Powered by Gemini AI • Harry Parker</p>
             </div>
         </Card>
     )
