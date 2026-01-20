@@ -1,0 +1,79 @@
+import { Client } from "@googlemaps/google-maps-services-js";
+
+const client = new Client({});
+const key = process.env.GOOGLE_MAPS_API_KEY || "";
+
+export const maps = {
+    // Get detailed route info
+    getRoute: async (origin: string, destination: string, mode: 'transit' | 'walking' | 'bicycling' = 'transit') => {
+        if (!key) throw new Error("Missing Google Maps API Key");
+
+        // @ts-ignore - Typescript might complain about partial params
+        return client.directions({
+            params: {
+                origin,
+                destination,
+                mode: mode as any,
+                key
+            }
+        });
+    },
+
+    // Matrix for multiple origins to candidates
+    getDistances: async (origins: string[], destinations: string[], mode: 'transit' | 'walking' = 'transit') => {
+        if (!key) throw new Error("Missing Google Maps API Key");
+
+        return client.distancematrix({
+            params: {
+                origins,
+                destinations,
+                mode,
+                key
+            }
+        });
+    },
+
+    // Find candidates around a point
+    searchNearbyPubs: async (location: { lat: number, lng: number }, radius: number = 1000) => {
+        if (!key) throw new Error("Missing Google Maps API Key");
+
+        return client.placesNearby({
+            params: {
+                location,
+                radius,
+                type: 'bar', // or 'point_of_interest' with keyword 'pub'
+                keyword: 'pub',
+                key
+            }
+        })
+    },
+
+    // Get area name from coordinates (Reverse Geocoding)
+    getNeighborhood: async (lat: number, lng: number) => {
+        if (!key) return "Unknown Area";
+
+        try {
+            const res = await client.reverseGeocode({
+                params: {
+                    latlng: { lat, lng },
+                    result_type: ['neighborhood', 'sublocality', 'political'],
+                    key
+                }
+            });
+
+            if (res.data.results.length > 0) {
+                // Try to find the most specific 'neighborhood' component
+                const result = res.data.results[0];
+                const neighborhood = result.address_components.find(c => c.types.includes('neighborhood'))?.long_name;
+                const sublocality = result.address_components.find(c => c.types.includes('sublocality'))?.long_name;
+                const locality = result.address_components.find(c => c.types.includes('locality'))?.long_name;
+
+                return neighborhood || sublocality || locality || "London";
+            }
+            return "Unknown Area";
+        } catch (error) {
+            console.error("Reverse Geocode Error", error);
+            return "London Area";
+        }
+    }
+};
