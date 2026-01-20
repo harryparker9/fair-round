@@ -77,11 +77,11 @@ export async function finalizeVoting(roundId: string, winningAreaId: string) {
     await triangulateRound(roundId, selectedArea.center)
     console.log("triangulateRound finished.");
 
-    // 4. Update stage to results
-    console.log("Updating stage to results...");
+    // 4. Update stage to pub_voting (Intermediate stage)
+    console.log("Updating stage to pub_voting...");
     const { error } = await supabase
         .from('rounds')
-        .update({ stage: 'results' })
+        .update({ stage: 'pub_voting' })
         .eq('id', roundId)
 
     if (error) {
@@ -89,4 +89,22 @@ export async function finalizeVoting(roundId: string, winningAreaId: string) {
         throw error
     }
     console.log("Stage updated. Finalize complete.");
+}
+
+// 4. Host confirms the winning pub
+export async function confirmPubWinner(roundId: string, pubId: string) {
+    // Fetch current settings to preserve them
+    const { data: round } = await supabase.from('rounds').select('settings').eq('id', roundId).single()
+    const currentSettings = round?.settings || {}
+
+    const { error } = await supabase
+        .from('rounds')
+        .update({
+            stage: 'results',
+            settings: { ...currentSettings, winning_pub_id: pubId }
+        })
+        .eq('id', roundId)
+
+    if (error) throw error
+    return { success: true }
 }

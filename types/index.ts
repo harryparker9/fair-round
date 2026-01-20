@@ -17,7 +17,7 @@ export interface Round {
     host_id: string
     created_at: string
     status: 'active' | 'completed' | 'expired'
-    stage: 'lobby' | 'voting' | 'results' // New
+    stage: 'lobby' | 'voting' | 'pub_voting' | 'results' // New
     area_options?: AreaOption[] // New
     settings: {
         mode: 'optimized' | 'capped'

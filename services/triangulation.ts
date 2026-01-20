@@ -229,7 +229,7 @@ export const triangulationService = {
         // User picked "Waterloo". Now we show pubs near Waterloo.
 
         // 1. Search Google Places (Paid, but only 1 call now!)
-        const pubsResponse = await maps.searchNearbyPubs(stationLocation, 500); // 500m walk from station
+        const pubsResponse = await maps.searchNearbyPubs(stationLocation, 800); // 800m walk (~10 mins)
         const results = pubsResponse.data.results.slice(0, 10);
 
         // 2. Vibe Check (Gemini)

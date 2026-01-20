@@ -26,12 +26,20 @@ export function CreateRoundCard() {
         setLoading(true)
         const code = generateCode()
 
+        // Generate or get persistent user ID for Host Logic
+        let userId = localStorage.getItem('fair_round_user_id')
+        if (!userId) {
+            userId = crypto.randomUUID()
+            localStorage.setItem('fair_round_user_id', userId)
+        }
+
         // In a real app, check collision. For MVP, assume unique.
         const { data, error } = await supabase
             .from('rounds')
             .insert([
                 {
                     code,
+                    host_id: userId, // Set the creator as host
                     status: 'active',
                     settings: { mode: 'optimized' }
                 }
