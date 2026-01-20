@@ -53,43 +53,53 @@ export async function castVote(memberId: string, areaId: string) {
 
 // 3. Host finalizes the vote -> Moves to results
 export async function finalizeVoting(roundId: string, winningAreaId: string) {
-    // 1. Get the round to find the winning area details
-    const { data: round } = await supabase
-        .from('rounds')
-        .select('*')
-        .eq('id', roundId)
-        .single()
+    try {
+        // 1. Get the round to find the winning area details
+        const { data: round } = await supabase
+            .from('rounds')
+            .select('*')
+            .eq('id', roundId)
+            .single()
 
-    if (!round) throw new Error("Round not found")
+        if (!round) throw new Error("Round not found")
 
-    // 2. Find the selected area object
-    console.log("Finalizing Voting. Winning ID:", winningAreaId, typeof winningAreaId);
+        // 2. Find the selected area object
+        console.log("Finalizing Voting. Winning ID:", winningAreaId, typeof winningAreaId);
 
-    const selectedArea = round.area_options?.find((a: any) => String(a.id) === String(winningAreaId))
-    if (!selectedArea) {
-        console.error(`Area ${winningAreaId} not found. Options:`, round.area_options?.map((a: any) => a.id));
-        throw new Error(`Selected area configuration not found (ID: ${winningAreaId})`)
+        const selectedArea = round.area_options?.find((a: any) => String(a.id) === String(winningAreaId))
+        if (!selectedArea) {
+            console.error(`Area ${winningAreaId} not found. Options:`, round.area_options?.map((a: any) => a.id));
+            throw new Error(`Selected area configuration not found (ID: ${winningAreaId})`)
+        }
+
+        // 3. Trigger Triangulation with this specific center
+        console.log("Calling triangulateRound...");
+        try {
+            await triangulateRound(roundId, selectedArea.center)
+        } catch (tError: any) {
+            console.error("Triangulation internal error:", tError);
+            throw new Error(`Triangulation failed: ${tError.message}`);
+        }
+        console.log("triangulateRound finished.");
+
+        // 4. Update stage to pub_voting (Intermediate stage)
+        console.log("Updating stage to pub_voting...");
+        const db = supabaseAdmin || supabase; // Prefer admin
+        const { error } = await db
+            .from('rounds')
+            .update({ stage: 'pub_voting' })
+            .eq('id', roundId)
+
+        if (error) {
+            console.error("Error updating stage:", error);
+            throw error
+        }
+        console.log("Stage updated. Finalize complete.");
+        return { success: true }
+    } catch (e: any) {
+        console.error("Finalize Voting Error:", e)
+        return { success: false, error: e.message || "Unknown error" }
     }
-
-    // 3. Trigger Triangulation with this specific center
-    // We update the triangulateRound action to accept an override
-    console.log("Calling triangulateRound...");
-    await triangulateRound(roundId, selectedArea.center)
-    console.log("triangulateRound finished.");
-
-    // 4. Update stage to pub_voting (Intermediate stage)
-    console.log("Updating stage to pub_voting...");
-    const db = supabaseAdmin || supabase; // Prefer admin
-    const { error } = await db
-        .from('rounds')
-        .update({ stage: 'pub_voting' })
-        .eq('id', roundId)
-
-    if (error) {
-        console.error("Error updating stage:", error);
-        throw error
-    }
-    console.log("Stage updated. Finalize complete.");
 }
 
 // 4. Host confirms the winning pub
