@@ -81,6 +81,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
             .channel(`round_lobby_${roundId}`)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'party_members', filter: `round_id=eq.${roundId}` },
                 (payload) => {
+                    console.log("Realtime Member Update:", payload)
                     if (payload.eventType === 'INSERT') {
                         setMembers(prev => [...prev, payload.new])
                     } else if (payload.eventType === 'UPDATE') {
@@ -89,6 +90,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                 })
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rounds', filter: `id=eq.${roundId}` },
                 (payload) => {
+                    console.log("Realtime Round Update:", payload)
                     const newRound = payload.new
                     setStage(newRound.stage)
                     if (newRound.area_options) setAreaOptions(newRound.area_options)
@@ -102,7 +104,9 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                         }, 1500)
                     }
                 })
-            .subscribe()
+            .subscribe((status) => {
+                console.log("Realtime Subscription Status:", status)
+            })
 
         return () => { supabase.removeChannel(channel) }
     }, [roundId, recommendations])
