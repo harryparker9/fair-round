@@ -19,6 +19,8 @@ function generateCode() {
 export function CreateRoundCard() {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
+    const [activeTab, setActiveTab] = useState<'create' | 'join'>('create')
+    const [joinCode, setJoinCode] = useState('')
 
     const handleCreateRound = async () => {
         setLoading(true)
@@ -52,23 +54,72 @@ export function CreateRoundCard() {
         router.push(`/round/${code}`)
     }
 
+    const handleJoinRound = (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!joinCode || joinCode.length < 6) return
+        router.push(`/round/${joinCode.toUpperCase()}`)
+    }
+
     return (
-        <Card className="max-w-md w-full text-center space-y-6 animate-fade-in-up">
+        <Card className="max-w-md w-full text-center space-y-6 animate-fade-in-up p-6">
             <div className="space-y-2">
                 <h2 className="text-3xl font-bold tracking-tight text-white">Start a Round</h2>
                 <p className="text-white/60">Find the fairest pub for your group in London.</p>
             </div>
 
-            <div className="flex flex-col gap-4">
-                <Button
-                    variant="primary"
-                    size="lg"
-                    onClick={handleCreateRound}
-                    disabled={loading}
-                    className="w-full text-lg shadow-[0_0_20px_rgba(255,215,0,0.4)]"
+            {/* Tabs */}
+            <div className="flex bg-white/5 p-1 rounded-xl">
+                <button
+                    onClick={() => setActiveTab('create')}
+                    className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === 'create' ? 'bg-pint-gold text-charcoal shadow-lg' : 'text-white/60 hover:text-white'}`}
                 >
-                    {loading ? 'Initiating...' : 'Create New Round'}
-                </Button>
+                    Create New
+                </button>
+                <button
+                    onClick={() => setActiveTab('join')}
+                    className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === 'join' ? 'bg-pint-gold text-charcoal shadow-lg' : 'text-white/60 hover:text-white'}`}
+                >
+                    Join Existing
+                </button>
+            </div>
+
+            <div className="flex flex-col gap-4 min-h-[120px] justify-center">
+                {activeTab === 'create' ? (
+                    <div className="space-y-4 animate-fade-in">
+                        <p className="text-sm text-white/40">Start a fresh round and invite friends.</p>
+                        <Button
+                            variant="primary"
+                            size="lg"
+                            onClick={handleCreateRound}
+                            disabled={loading}
+                            className="w-full text-lg shadow-[0_0_20px_rgba(255,215,0,0.4)]"
+                        >
+                            {loading ? 'Initiating...' : 'Create New Round'}
+                        </Button>
+                    </div>
+                ) : (
+                    <form onSubmit={handleJoinRound} className="space-y-4 animate-fade-in">
+                        <p className="text-sm text-white/40">Enter the 6-character code from your host.</p>
+                        <input
+                            type="text"
+                            placeholder="e.g. 2BCAYT"
+                            maxLength={6}
+                            value={joinCode}
+                            onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 text-center tracking-widest text-xl font-mono focus:outline-none focus:ring-2 focus:ring-pint-gold transition-all uppercase"
+                        />
+                        <Button
+                            type="submit"
+                            variant="secondary"
+                            size="lg"
+                            className="w-full"
+                            disabled={joinCode.length < 6}
+                        >
+                            Join Party
+                        </Button>
+                    </form>
+                )}
+
                 <p className="text-xs text-white/40">Powered by Gemini AI • Harry Parker</p>
             </div>
         </Card>
