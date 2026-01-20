@@ -148,6 +148,12 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
 
     if (loading) return null
 
+    // Manual refresh helper
+    const refreshMembers = async () => {
+        const { data: memData } = await supabase.from('party_members').select('*').eq('round_id', roundId)
+        if (memData) setMembers(memData)
+    }
+
     const uniqueMembers = Array.from(new Map(members.map(m => [m.id, m])).values())
 
     // --- RENDER ---
