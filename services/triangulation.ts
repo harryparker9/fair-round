@@ -118,9 +118,29 @@ export const triangulationService = {
             .sort((a, b) => a.fairness_score - b.fairness_score)
             .slice(0, 3);
 
-        // Gemini Vibe Check
+        // Google Summary / Reviews Check
         const enhancedTop3 = await Promise.all(top3.map(async (c) => {
-            const vibe = await gemini.generateVibeCheck(c.name, c.vicinity, c.rating);
+            // Fetch rich details
+            const details = await maps.getPlaceDetails(c.placeId);
+
+            let vibe = `Rated ${c.rating} stars.`;
+
+            if (details) {
+                // 1. Prefer Editorial Summary
+                if (details.editorial_summary?.overview) {
+                    vibe = details.editorial_summary.overview;
+                }
+                // 2. Fallback to Top Review
+                else if (details.reviews && details.reviews.length > 0) {
+                    // Find a review with text, preferably > 20 chars
+                    const bestReview = details.reviews.find(r => r.text && r.text.length > 20) || details.reviews[0];
+                    if (bestReview && bestReview.text) {
+                        // Truncate if too long (max 150 chars)
+                        vibe = `"${bestReview.text.length > 140 ? bestReview.text.substring(0, 140) + '...' : bestReview.text}"`;
+                    }
+                }
+            }
+
             return { ...c, vibe_summary: vibe };
         }));
 
@@ -256,14 +276,29 @@ export const triangulationService = {
         // We can simplify and just show the pub details.
 
         const enhancedPubs = await Promise.all(results.map(async (place) => {
-            const vibe = await gemini.generateVibeCheck(place.name!, place.vicinity!, place.rating || 0);
+            // Fetch rich details
+            const details = await maps.getPlaceDetails(place.place_id!);
+
+            let vibe = `Rated ${place.rating} stars.`;
+
+            if (details) {
+                if (details.editorial_summary?.overview) {
+                    vibe = details.editorial_summary.overview;
+                } else if (details.reviews && details.reviews.length > 0) {
+                    const bestReview = details.reviews.find(r => r.text && r.text.length > 20) || details.reviews[0];
+                    if (bestReview && bestReview.text) {
+                        vibe = `"${bestReview.text.length > 120 ? bestReview.text.substring(0, 120) + '...' : bestReview.text}"`;
+                    }
+                }
+            }
+
             return {
                 place_id: place.place_id!,
                 name: place.name!,
                 rating: place.rating || 0,
                 vicinity: place.vicinity!,
                 vibe_summary: vibe,
-                travel_times: {}, // UI expects this map, but we can leave empty or fill with station times?
+                travel_times: {},
                 total_travel_time: 0,
                 fairness_score: 0,
                 location: place.geometry?.location

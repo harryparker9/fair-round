@@ -84,4 +84,22 @@ export const maps = {
             return "London Area";
         }
     }
+    // Get Place Details (Summary & Reviews)
+    getPlaceDetails: async (placeId: string) => {
+        if (!key) return null;
+
+        try {
+            const res = await client.placeDetails({
+                params: {
+                    place_id: placeId,
+                    fields: ['editorial_summary', 'reviews', 'rating', 'user_ratings_total'],
+                    key
+                }
+            });
+            return res.data.result;
+        } catch (e) {
+            console.error("Place Details Error:", e);
+            return null;
+        }
+    }
 };
