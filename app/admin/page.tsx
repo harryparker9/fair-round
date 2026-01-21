@@ -10,15 +10,19 @@ interface AdminPageProps {
 }
 
 async function getStats() {
-    // 1. Total Rounds
+    // 1. Total Rounds Created
     const { count: roundsCount } = await supabase.from('rounds').select('*', { count: 'exact', head: true })
 
-    // 2. Total Members
+    // 2. Total Joins (Party Members entries)
     const { count: membersCount } = await supabase.from('party_members').select('*', { count: 'exact', head: true })
 
-    // 3. Top Starting Stations
-    // Supabase RPC or client-side aggregation? Client-side for MVP on small data is fine.
-    // For scale, we'd use .rpc(). Let's fetch last 100 members with stations.
+    // 3. Unique Users (by Name) - Client-side approximation
+    // Fetch all names to count unique ones. 
+    // Optimization: For huge scale, use .rpc or separate users table. For now, this is fine.
+    const { data: allMembers } = await supabase.from('party_members').select('name')
+    const uniqueNames = new Set(allMembers?.map(m => m.name.trim().toLowerCase())).size
+
+    // 4. Top Starting Stations
     const { data: recentMembers } = await supabase
         .from('party_members')
         .select('start_station_id, start_location_type')
@@ -52,7 +56,7 @@ async function getStats() {
         })
     }
 
-    // 4. Activity 7 Days
+    // 5. Activity 7 Days
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
 
@@ -64,6 +68,7 @@ async function getStats() {
     return {
         roundsCount: roundsCount || 0,
         membersCount: membersCount || 0,
+        uniqueNames: uniqueNames || 0,
         recentRoundsCount: recentRoundsCount || 0,
         topStations
     }
@@ -72,7 +77,6 @@ async function getStats() {
 export default async function AdminPage({ searchParams }: AdminPageProps) {
     const params = await searchParams
     const secret = params.secret
-    console.log(`Checking admin secret...`)
 
     // Case-insensitive comparison for better UX
     if (secret?.toLowerCase() !== process.env.ADMIN_SECRET?.toLowerCase()) {
@@ -105,20 +109,22 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     <Card className="bg-white/5 border-white/10 p-6">
                         <p className="text-sm text-white/40 uppercase tracking-widest">Total Rounds</p>
                         <p className="text-4xl font-bold text-white mt-2">{stats.roundsCount}</p>
+                        <p className="text-xs text-white/30 mt-1">Created rooms</p>
                     </Card>
                     <Card className="bg-white/5 border-white/10 p-6">
-                        <p className="text-sm text-white/40 uppercase tracking-widest">Total Users</p>
+                        <p className="text-sm text-white/40 uppercase tracking-widest">Total Joins</p>
                         <p className="text-4xl font-bold text-fairness-green mt-2">{stats.membersCount}</p>
+                        <p className="text-xs text-white/30 mt-1">Participants across all rounds</p>
+                    </Card>
+                    <Card className="bg-white/5 border-white/10 p-6">
+                        <p className="text-sm text-white/40 uppercase tracking-widest">Est. Unique Users</p>
+                        <p className="text-4xl font-bold text-blue-400 mt-2">{stats.uniqueNames}</p>
+                        <p className="text-xs text-white/30 mt-1">Distinct names used</p>
                     </Card>
                     <Card className="bg-white/5 border-white/10 p-6">
                         <p className="text-sm text-white/40 uppercase tracking-widest">Last 7 Days</p>
-                        <p className="text-4xl font-bold text-blue-400 mt-2">{stats.recentRoundsCount} <span className="text-lg text-white/40 font-normal">rounds</span></p>
-                    </Card>
-                    <Card className="bg-white/5 border-white/10 p-6">
-                        <p className="text-sm text-white/40 uppercase tracking-widest">Avg Users / Round</p>
-                        <p className="text-4xl font-bold text-purple-400 mt-2">
-                            {stats.roundsCount > 0 ? (stats.membersCount / stats.roundsCount).toFixed(1) : '0'}
-                        </p>
+                        <p className="text-4xl font-bold text-purple-400 mt-2">{stats.recentRoundsCount} <span className="text-lg text-white/40 font-normal">rounds</span></p>
+                        <p className="text-xs text-white/30 mt-1">Recent activity</p>
                     </Card>
                 </div>
 
