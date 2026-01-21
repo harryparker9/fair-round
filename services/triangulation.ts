@@ -301,9 +301,29 @@ export const triangulationService = {
             };
         }));
 
-        return scoredStations
-            .sort((a, b) => a.fairness_score - b.fairness_score)
-            .slice(0, 3)
+
+
+        // Deduplicate: Filter stations that are too close to a better-ranked station
+        const uniqueStations: typeof scoredStations = [];
+        const sortedCandidates = scoredStations.sort((a, b) => a.fairness_score - b.fairness_score);
+
+        for (const candidate of sortedCandidates) {
+            // Check if this candidate is within 300m of any already accepted candidate
+            const isDuplicate = uniqueStations.some(accepted => {
+                const dLat = (candidate.lat || 0) - (accepted.lat || 0);
+                const dLng = (candidate.lng || 0) - (accepted.lng || 0);
+                // Approx distance in degrees squared (0.003 degrees ~= 330m)
+                const distSq = dLat * dLat + dLng * dLng;
+                return distSq < 0.00001; // ~300-400m threshold
+            });
+
+            if (!isDuplicate) {
+                uniqueStations.push(candidate);
+            }
+            if (uniqueStations.length >= 3) break; // We only need top 3 generic areas
+        }
+
+        return uniqueStations
             .map(s => ({
                 id: s.id,
                 name: s.name,
