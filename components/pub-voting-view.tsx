@@ -45,8 +45,8 @@ export function PubVotingView({ pubs, round, currentUserId, onVote, onConfirmWin
                         key={pub.place_id}
                         onClick={() => setSelectedPubId(pub.place_id)}
                         className={`p-4 cursor-pointer transition-all border-2 ${selectedPubId === pub.place_id
-                                ? 'border-pint-gold bg-white/10 shadow-[0_0_15px_rgba(255,215,0,0.2)]'
-                                : 'border-transparent bg-white/5 hover:bg-white/10'
+                            ? 'border-pint-gold bg-white/10 shadow-[0_0_15px_rgba(255,215,0,0.2)]'
+                            : 'border-transparent bg-white/5 hover:bg-white/10'
                             }`}
                     >
                         <div className="flex justify-between items-start mb-2">
@@ -74,7 +74,7 @@ export function PubVotingView({ pubs, round, currentUserId, onVote, onConfirmWin
                         <div className="flex gap-4 text-xs text-white/40">
                             <div className="flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
-                                {Math.round(pub.total_travel_time / (Object.keys(pub.travel_times).length || 1))} min avg
+                                {Math.round(pub.total_travel_time / (Object.keys(pub.travel_times).length || 1))} min tot
                             </div>
                             <div className="flex items-center gap-1">
                                 <Beer className="w-3 h-3" />

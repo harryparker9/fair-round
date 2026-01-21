@@ -162,12 +162,17 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
                                             <div key={memberName} className="flex justify-between items-center bg-white/5 px-2 py-1 rounded">
                                                 <span className="text-xs text-white/80">{memberName}</span>
                                                 <div className="flex items-center gap-2">
-                                                    <span className={cn(
-                                                        "text-xs font-mono",
-                                                        time > 45 ? "text-red-400" : "text-fairness-green"
-                                                    )}>
-                                                        {time} min
-                                                    </span>
+                                                    <div className="flex flex-col items-end leading-none">
+                                                        <span className={cn(
+                                                            "text-xs font-mono",
+                                                            time.to > 45 ? "text-red-400" : "text-fairness-green"
+                                                        )}>
+                                                            {time.to}m
+                                                        </span>
+                                                        <span className="text-[10px] text-white/30">
+                                                            Ret: {time.home}m
+                                                        </span>
+                                                    </div>
                                                     {/* Link to Google Maps to verify route */}
                                                     <a
                                                         href={`https://www.google.com/maps/dir/?api=1&destination=${area.center.lat},${area.center.lng}&travelmode=transit`}
