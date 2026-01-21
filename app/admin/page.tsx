@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card"
 import { redirect } from "next/navigation"
 
 export const dynamic = 'force-dynamic'
+// Force redeploy: 2026-01-21 19:43
 
 interface AdminPageProps {
     searchParams: Promise<{ secret?: string }>
