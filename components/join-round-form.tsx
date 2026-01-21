@@ -12,33 +12,37 @@ import { MapPicker } from '@/components/map-picker'
 
 interface JoinRoundFormProps {
     roundId: string // UUID from DB
-    existingMembers?: any[] // New Prop
+    existingMembers?: any[]
     onJoin: () => void
+    initialData?: any // For editing
+    isUpdate?: boolean
 }
 
-export function JoinRoundForm({ roundId, existingMembers = [], onJoin }: JoinRoundFormProps) {
-    const [name, setName] = useState('')
+export function JoinRoundForm({ roundId, existingMembers = [], onJoin, initialData, isUpdate = false }: JoinRoundFormProps) {
+    const [name, setName] = useState(initialData?.name || '')
     const [photoBlob, setPhotoBlob] = useState<Blob | null>(null)
     const [status, setStatus] = useState<'idle' | 'locating' | 'uploading'>('idle')
-    const [skipSelfie, setSkipSelfie] = useState(false)
-    const [isClaiming, setIsClaiming] = useState(false) // New state for 'Already Joined' mode
+    const [skipSelfie, setSkipSelfie] = useState(!!initialData?.photo_path)
+    const [isClaiming, setIsClaiming] = useState(false)
 
     // Location State
-    const [startMode, setStartMode] = useState<'live' | 'station' | 'custom'>('live')
-    const [endMode, setEndMode] = useState<'same' | 'station' | 'custom'>('same')
+    const [startMode, setStartMode] = useState<'live' | 'station' | 'custom'>((initialData?.start_location_type as any) || 'live')
+    const [endMode, setEndMode] = useState<'same' | 'station' | 'custom'>((initialData?.end_location_type as any) || 'same')
 
     // Live Location Data
-    const [location, setLocation] = useState<{ lat: number, lng: number } | null>(null)
-    const [locationName, setLocationName] = useState<string | null>(null)
+    const [location, setLocation] = useState<{ lat: number, lng: number } | null>(initialData?.location || null)
+    const [locationName, setLocationName] = useState<string | null>(initialData?.location?.address || null)
 
     // Station Data
     const [stationQuery, setStationQuery] = useState('')
     const [stationResults, setStationResults] = useState<any[]>([])
-    const [selectedStartStation, setSelectedStartStation] = useState<any | null>(null)
+    const [selectedStartStation, setSelectedStartStation] = useState<any | null>(null) // We'll load this async if needed, or just rely on ID for now if we had the full object. For MVP, we might lose the station *name* display if we strictly rely on ID, but let's see.
 
     // Custom Start Data
     const [customStartQuery, setCustomStartQuery] = useState('')
-    const [selectedCustomStart, setSelectedCustomStart] = useState<{ lat: number, lng: number, address: string } | null>(null)
+    const [selectedCustomStart, setSelectedCustomStart] = useState<{ lat: number, lng: number, address: string } | null>(
+        initialData?.start_location_type === 'custom' ? initialData.location : null
+    )
 
     // End Data
     const [selectedEndStation, setSelectedEndStation] = useState<any | null>(null)
@@ -47,11 +51,29 @@ export function JoinRoundForm({ roundId, existingMembers = [], onJoin }: JoinRou
 
     // Custom End Data
     const [customEndQuery, setCustomEndQuery] = useState('')
-    const [selectedCustomEnd, setSelectedCustomEnd] = useState<{ lat: number, lng: number, address: string } | null>(null)
+    const [selectedCustomEnd, setSelectedCustomEnd] = useState<{ lat: number, lng: number, address: string } | null>(
+        initialData?.end_location_type === 'custom' ? { lat: initialData.end_lat, lng: initialData.end_lng, address: 'Previous Selection' } : null
+    )
 
     // Map Picker State
     const [showStartMap, setShowStartMap] = useState(false)
     const [showEndMap, setShowEndMap] = useState(false)
+
+    // Hydrate Stations if editing
+    useEffect(() => {
+        const hydrate = async () => {
+            if (initialData?.start_station_id) {
+                const { data: s } = await supabase.from('stations').select('*').eq('id', initialData.start_station_id).single()
+                if (s) setSelectedStartStation(s)
+            }
+            if (initialData?.end_station_id) {
+                const { data: s } = await supabase.from('stations').select('*').eq('id', initialData.end_station_id).single()
+                if (s) setSelectedEndStation(s)
+            }
+        }
+        if (isUpdate && initialData) hydrate()
+    }, [isUpdate, initialData])
+
 
     // Search Stations Effect
     useEffect(() => {
@@ -194,57 +216,68 @@ export function JoinRoundForm({ roundId, existingMembers = [], onJoin }: JoinRou
 
         setStatus('uploading')
         try {
-            let photoPath = null
+            let photoPath = initialData?.photo_path || null
             if (photoBlob) {
                 const filename = `${roundId}/${Date.now()}.jpg`
                 const { data } = await supabase.storage.from('temporary_selfies').upload(filename, photoBlob)
                 if (data) photoPath = data.path
             }
 
-            // Check existing
-            const { data: existingMember } = await supabase
-                .from('party_members')
-                .select('*')
-                .eq('round_id', roundId)
-                .ilike('name', name.trim())
-                .maybeSingle()
+            const payload = {
+                round_id: roundId,
+                name: name.trim(),
+                photo_path: photoPath,
+                transport_mode: 'transit',
+                status: 'ready',
+                location: finalLocation,
+                start_location_type: startMode,
+                start_station_id: startMode === 'station' ? selectedStartStation.id : null,
+                end_location_type: endMode,
+                end_station_id: endMode === 'station' ? selectedEndStation?.id : null,
+                // @ts-ignore
+                end_lat: finalEndLocation?.lat,
+                // @ts-ignore
+                end_lng: finalEndLocation?.lng
+            }
 
-            let memberId = existingMember?.id
-
-            if (!memberId) {
-                const { data: newMember, error } = await supabase
+            if (isUpdate && initialData?.id) {
+                // UPDATE
+                const { error } = await supabase
                     .from('party_members')
-                    .insert([{
-                        round_id: roundId,
-                        name: name.trim(),
-                        photo_path: photoPath,
-                        transport_mode: 'transit',
-                        status: 'ready',
-                        location: finalLocation,
-                        start_location_type: startMode,
-                        start_station_id: startMode === 'station' ? selectedStartStation.id : null,
-                        end_location_type: endMode,
-                        end_station_id: endMode === 'station' ? selectedEndStation?.id : null,
-                        // @ts-ignore - Columns added via migration
-                        end_lat: finalEndLocation?.lat,
-                        // @ts-ignore
-                        end_lng: finalEndLocation?.lng
-                    }])
-                    .select()
-                    .single()
-
+                    .update(payload)
+                    .eq('id', initialData.id)
                 if (error) throw error
-                memberId = newMember.id
+            } else {
+                // INSERT / CHECK
+                const { data: existingMember } = await supabase
+                    .from('party_members')
+                    .select('id')
+                    .eq('round_id', roundId)
+                    .ilike('name', name.trim())
+                    .maybeSingle()
+
+                let memberId = existingMember?.id
+
+                if (!memberId) {
+                    const { data: newMember, error } = await supabase
+                        .from('party_members')
+                        .insert([payload])
+                        .select()
+                        .single()
+                    if (error) throw error
+                    memberId = newMember.id
+                }
+
+                if (memberId) {
+                    localStorage.setItem(`fair-round-member-id-${roundId}`, memberId)
+                    localStorage.setItem(`fair-round-joined-${roundId}`, 'true')
+                }
             }
 
-            if (memberId) {
-                localStorage.setItem(`fair-round-member-id-${roundId}`, memberId)
-                localStorage.setItem(`fair-round-joined-${roundId}`, 'true')
-            }
             onJoin()
         } catch (err) {
             console.error(err)
-            alert('Failed to join')
+            alert('Failed to save')
         } finally {
             setStatus('idle')
         }
@@ -289,8 +322,8 @@ export function JoinRoundForm({ roundId, existingMembers = [], onJoin }: JoinRou
     return (
         <form onSubmit={handleSubmit} className="flex flex-col items-center gap-6 w-full max-w-sm animate-fade-in-up delay-100 pb-20">
             <div className="text-center space-y-2">
-                <h2 className="text-2xl font-bold text-white">Join the Party</h2>
-                <p className="text-white/60 text-sm">Tell us where you're starting from.</p>
+                <h2 className="text-2xl font-bold text-white">{isUpdate ? 'Update Settings' : 'Join the Party'}</h2>
+                <p className="text-white/60 text-sm">{isUpdate ? 'Change where you are starting from.' : 'Tell us where you\'re starting from.'}</p>
             </div>
 
             <div className="w-full space-y-6">
@@ -303,7 +336,7 @@ export function JoinRoundForm({ roundId, existingMembers = [], onJoin }: JoinRou
                         </div>
                     ) : (
                         <div className="w-full h-16 flex items-center justify-center border border-dashed border-white/20 rounded-xl bg-white/5 cursor-pointer" onClick={() => setSkipSelfie(false)}>
-                            <span className="text-sm text-white/40">Add Photo +</span>
+                            <span className="text-sm text-white/40">{photoBlob || initialData?.photo_path ? 'Update Photo' : 'Add Photo +'}</span>
                         </div>
                     )}
 
@@ -524,7 +557,7 @@ export function JoinRoundForm({ roundId, existingMembers = [], onJoin }: JoinRou
                     className="w-full shadow-lg mt-4"
                     disabled={!name || (startMode === 'live' && !location) || (startMode === 'station' && !selectedStartStation) || status !== 'idle'}
                 >
-                    {status === 'uploading' ? 'Joining...' : 'Ready to Start'}
+                    {status === 'uploading' ? (isUpdate ? 'Saving...' : 'Joining...') : (isUpdate ? 'Save Changes' : 'Ready to Start')}
                 </Button>
 
                 {existingMembers.length > 0 && (
