@@ -145,18 +145,19 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
             try {
                 // @ts-ignore
                 await endRound(roundId)
-                // Local cleanup handled by effect or manually below
+            } catch (e) {
+                console.error("Failed to end party on server", e)
+            } finally {
+                // Always exit locally even if server fails
                 localStorage.removeItem(`fair-round-joined-${roundId}`)
                 localStorage.removeItem(`fair-round-member-id-${roundId}`)
-                router.push('/')
-            } catch (e) {
-                alert("Failed to end party")
+                window.location.href = '/' // Hard reload to clear state
             }
         } else {
             if (!confirm("Leave this party?")) return;
             localStorage.removeItem(`fair-round-joined-${roundId}`)
             localStorage.removeItem(`fair-round-member-id-${roundId}`)
-            router.push('/')
+            window.location.href = '/' // Hard reload to clear state
         }
     }
 
