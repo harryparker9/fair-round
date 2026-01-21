@@ -82,7 +82,7 @@ export function CreateRoundCard() {
                 // But wait, the previous code pushed `/round/${joinCode}`.
                 // If the route expects CODE, then we are good.
                 // Validating existence is still good.
-                router.push(`/round/${res.roundId}`) // Wait, check if route uses ID or Code.
+                router.push(`/round/${joinCode.toUpperCase()}`)
             } else {
                 setJoinError(res.error || 'Invalid code')
             }
