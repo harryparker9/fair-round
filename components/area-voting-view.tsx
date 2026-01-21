@@ -21,6 +21,13 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
     const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null)
     const [expandedAreaId, setExpandedAreaId] = useState<string | null>(null)
     const [isFinalizing, setIsFinalizing] = useState(false)
+    const [filters, setFilters] = useState<string[]>([])
+
+    const toggleFilter = (f: string) => {
+        setFilters(prev =>
+            prev.includes(f) ? prev.filter(i => i !== f) : [...prev, f]
+        )
+    }
 
     // Calculate votes per area
     const getVoteCount = (areaId: string) => {
@@ -53,7 +60,7 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
         setIsFinalizing(true)
         try {
             // @ts-ignore
-            const res = await finalizeVoting(roundId, areaId)
+            const res = await finalizeVoting(roundId, areaId, filters) // Pass active filters
             if (res.success) {
                 // Success! Optimistically switch stage
                 if (onStageChange) onStageChange('results') // This actually maps to 'pub_voting' in manager
@@ -195,10 +202,35 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
             </div>
 
             {isHost && (
-                <div className="fixed bottom-6 left-0 right-0 p-4 flex justify-center z-50">
+                <div className="fixed bottom-6 left-0 right-0 p-4 flex flex-col items-center gap-3 z-50">
+
+                    {/* Filter Toggles */}
+                    <div className="flex gap-2 bg-charcoal/90 backdrop-blur border border-white/10 p-1.5 rounded-full shadow-lg">
+                        {['garden', 'food', 'sports'].map(f => {
+                            const isActive = filters.includes(f)
+                            return (
+                                <button
+                                    key={f}
+                                    onClick={() => toggleFilter(f)}
+                                    className={cn(
+                                        "px-3 py-1 rounded-full text-xs font-bold transition-all border",
+                                        isActive
+                                            ? "bg-fairness-green text-black border-fairness-green"
+                                            : "bg-transparent text-white/50 border-transparent hover:bg-white/10"
+                                    )}
+                                >
+                                    {f === 'garden' && '🌳 '}
+                                    {f === 'food' && '🍔 '}
+                                    {f === 'sports' && '⚽ '}
+                                    {f.charAt(0).toUpperCase() + f.slice(1)}
+                                </button>
+                            )
+                        })}
+                    </div>
+
                     <div className="glass-panel px-6 py-4 rounded-full flex items-center gap-4 shadow-2xl backdrop-blur-2xl border border-pint-gold/20">
                         <div className="text-right">
-                            <p className="text-xs text-white/40 uppercase">Current Leader</p>
+                            <p className="text-xs text-white/40 uppercase">Winning Area</p>
                             <p className="text-sm font-bold text-white max-w-[150px] truncate">{currentLeader?.name || "None"}</p>
                         </div>
                         <Button
@@ -207,7 +239,7 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
                             disabled={isFinalizing || !currentLeader}
                             className="shadow-[0_0_20px_rgba(255,215,0,0.3)] animate-pulse"
                         >
-                            {isFinalizing ? "Finalizing..." : "Lock In & Find Pubs"}
+                            {isFinalizing ? "Finding Pubs..." : "Lock In & Find Pubs"}
                         </Button>
                     </div>
                 </div>

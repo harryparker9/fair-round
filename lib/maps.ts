@@ -34,10 +34,17 @@ export const maps = {
     },
 
     // Find candidates around a point
-    searchNearbyPubs: async (location: { lat: number, lng: number }, radius: number = 1000) => {
+    searchNearbyPubs: async (location: { lat: number, lng: number }, radius: number = 1000, filters: string[] = []) => {
         if (!key) {
             console.error("GOOGLE_MAPS_API_KEY is missing on server.");
             throw new Error("Missing Google Maps API Key on Server");
+        }
+
+        // Construct keyword based on filters
+        // e.g. "pub beer garden", "gastropub", "pub sports"
+        let keyword = 'pub';
+        if (filters.length > 0) {
+            keyword += ' ' + filters.join(' ');
         }
 
         try {
@@ -46,7 +53,7 @@ export const maps = {
                     location,
                     radius,
                     type: 'bar', // or 'point_of_interest' with keyword 'pub'
-                    keyword: 'pub',
+                    keyword,
                     key
                 }
             })

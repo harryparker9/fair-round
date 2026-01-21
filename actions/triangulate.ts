@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { triangulationService } from "@/services/triangulation"
 
-export async function triangulateRound(roundId: string, overrideCenter?: { lat: number, lng: number }) {
+export async function triangulateRound(roundId: string, overrideCenter?: { lat: number, lng: number }, filters: string[] = []) {
     console.log(`[Triangulate] Starting for Round ${roundId}`);
 
     // 1. Fetch Round and Members (Anon is fine for reading usually, or use admin if needed)
@@ -28,7 +28,7 @@ export async function triangulateRound(roundId: string, overrideCenter?: { lat: 
 
     let recommendations;
     try {
-        recommendations = await triangulationService.findPubsNearStation(overrideCenter, members)
+        recommendations = await triangulationService.findPubsNearStation(overrideCenter, members, filters)
         console.log(`[Triangulate] Pubs found: ${recommendations.length}`);
     } catch (e: any) {
         console.error("[Triangulate] Logic failed:", e);

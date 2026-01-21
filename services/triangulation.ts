@@ -21,7 +21,7 @@ export const triangulationService = {
     },
 
     // 2. Main workflow
-    findFairestPubs: async (round: Round, members: PartyMember[], overrideCenter?: Coordinates): Promise<PubRecommendation[]> => {
+    findFairestPubs: async (round: Round, members: PartyMember[], overrideCenter?: Coordinates, filters: string[] = []): Promise<PubRecommendation[]> => {
         // Resolve Locations (Start AND End)
         const resolvedMembers = await Promise.all(members.map(async (m) => {
             let startLoc = m.location;
@@ -54,8 +54,8 @@ export const triangulationService = {
 
         const searchCenter = overrideCenter || triangulationService.calculateCentroid(pointsOfInterest);
 
-        // Search candidates near searchCenter
-        const pubsResponse = await maps.searchNearbyPubs(searchCenter, 1500); // 1.5km search
+        // Search candidates near searchCenter (filters passed here)
+        const pubsResponse = await maps.searchNearbyPubs(searchCenter, 1500, filters); // 1.5km search
         const candidates = pubsResponse.data.results.slice(0, 10); // Take top 10
 
         if (candidates.length === 0) return [];
@@ -311,12 +311,12 @@ export const triangulationService = {
     },
 
     // 3. Find Pubs (Only AFTER a station is selected)
-    findPubsNearStation: async (stationLocation: Coordinates, members: PartyMember[]): Promise<PubRecommendation[]> => {
+    findPubsNearStation: async (stationLocation: Coordinates, members: PartyMember[], filters: string[] = []): Promise<PubRecommendation[]> => {
         // This is the "Verification" step basically. 
         // User picked "Waterloo". Now we show pubs near Waterloo.
 
         // 1. Search Google Places (Paid, but only 1 call now!)
-        const pubsResponse = await maps.searchNearbyPubs(stationLocation, 800); // 800m walk (~10 mins)
+        const pubsResponse = await maps.searchNearbyPubs(stationLocation, 800, filters); // 800m walk (~10 mins)
         const results = pubsResponse.data.results.slice(0, 10);
 
         // 2. Vibe Check (Google)
