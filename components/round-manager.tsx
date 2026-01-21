@@ -416,25 +416,54 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                                 <p className="text-white/60">Waiting for everyone...</p>
                                             </div>
 
-                                            <div className="glass-panel p-6 rounded-2xl flex flex-col items-center gap-6">
-                                                <div className="flex flex-wrap justify-center gap-4 min-h-[100px]">
-                                                    {uniqueMembers.map((member) => (
-                                                        <div key={member.id} className="flex flex-col items-center gap-2 animate-pop-in">
-                                                            <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-fairness-green relative bg-white/10 flex items-center justify-center">
-                                                                {member.photo_path ? (
-                                                                    /* eslint-disable-next-line @next/next/no-img-element */
-                                                                    <img
-                                                                        src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/temporary_selfies/${member.photo_path}`}
-                                                                        alt={member.name}
-                                                                        className="w-full h-full object-cover transform scale-x-[-1]"
-                                                                    />
-                                                                ) : (
-                                                                    <span className="text-xl font-bold text-white/50">{member.name.charAt(0).toUpperCase()}</span>
-                                                                )}
+                                            <div className="glass-panel p-6 rounded-2xl flex flex-col items-center gap-6 w-full">
+                                                <div className="flex flex-col gap-3 w-full">
+                                                    {uniqueMembers.map((member) => {
+                                                        // Resolve Start Text (Lobby Version)
+                                                        let startText = 'Location Pending'
+                                                        if (member.start_location_type === 'station') {
+                                                            startText = stationNames[member.start_station_id] || 'Station'
+                                                        } else if (member.start_location_type === 'live' || member.start_location_type === 'custom') {
+                                                            startText = member.location?.address || 'Pinned Location'
+                                                            // Keep it short
+                                                            if (startText.length > 25) startText = startText.split(',')[0] + '...'
+                                                        }
+
+                                                        // Resolve End (if different)
+                                                        let endText = null
+                                                        if (member.end_location_type === 'station') {
+                                                            endText = stationNames[member.end_station_id] || 'Station'
+                                                        } else if (member.end_location_type === 'custom') {
+                                                            endText = 'Custom Return'
+                                                        }
+
+                                                        return (
+                                                            <div key={member.id} className="flex items-center gap-4 bg-white/5 p-3 rounded-xl border border-white/5 animate-pop-in">
+                                                                <div className="w-12 h-12 rounded-full overflow-hidden border border-white/20 relative bg-black/40 flex-shrink-0">
+                                                                    {member.photo_path ? (
+                                                                        /* eslint-disable-next-line @next/next/no-img-element */
+                                                                        <img
+                                                                            src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/temporary_selfies/${member.photo_path}`}
+                                                                            alt={member.name}
+                                                                            className="w-full h-full object-cover transform scale-x-[-1]"
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="w-full h-full flex items-center justify-center text-white/50 font-bold">
+                                                                            {member.name[0]?.toUpperCase()}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+
+                                                                <div className="flex-1 min-w-0 text-left">
+                                                                    <p className="text-white font-bold truncate">{member.name}</p>
+                                                                    <div className="flex flex-col text-xs text-white/60">
+                                                                        <span className="truncate">From: {startText}</span>
+                                                                        {endText && <span className="truncate">To: {endText}</span>}
+                                                                    </div>
+                                                                </div>
                                                             </div>
-                                                            <span className="text-xs text-white/80 font-medium">{member.name}</span>
-                                                        </div>
-                                                    ))}
+                                                        )
+                                                    })}
                                                     {uniqueMembers.length === 0 && <p className="text-white/20 italic">No one yet...</p>}
                                                 </div>
 
