@@ -37,6 +37,12 @@ export interface PartyMember {
         lng: number
         address?: string
     }
+    // Location Preference Fields
+    start_location_type?: 'live' | 'station'
+    start_station_id?: string
+    end_location_type?: 'same' | 'station'
+    end_station_id?: string
+
     vote_area_id?: string // New
     joined_at: string
 }

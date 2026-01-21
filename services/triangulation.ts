@@ -22,10 +22,19 @@ export const triangulationService = {
 
     // 2. Main workflow
     findFairestPubs: async (round: Round, members: PartyMember[], overrideCenter?: Coordinates): Promise<PubRecommendation[]> => {
-        const activeMembers = members.filter(m => m.status === 'ready' && m.location);
+        // Resolve Locations (Start Station vs Live)
+        const resolvedMembers = await Promise.all(members.map(async (m) => {
+            if (m.start_location_type === 'station' && m.start_station_id) {
+                const { data: station } = await supabase.from('stations').select('lat, lng').eq('id', m.start_station_id).single()
+                if (station) return { ...m, location: { lat: station.lat, lng: station.lng, address: 'Station' } }
+            }
+            return m
+        }))
+
+        const activeMembers = resolvedMembers.filter(m => m.status === 'ready' && m.location && (m.location.lat !== 0 || m.location.lng !== 0));
         if (activeMembers.length === 0) return [];
 
-        const memberLocations = activeMembers.map(m => m.location!);
+        const memberLocations = activeMembers.map(m => m.location! as Coordinates);
 
         // Use override center (from voting) OR calculate centroid
         const searchCenter = overrideCenter || triangulationService.calculateCentroid(memberLocations);
@@ -129,10 +138,19 @@ export const triangulationService = {
 
     // 2. MAIN: Find Best Stations (The "Station-First" Logical Core)
     findBestStations: async (members: PartyMember[]): Promise<any[]> => {
-        const activeMembers = members.filter(m => m.status === 'ready' && m.location);
+        // Resolve Locations (Start Station vs Live)
+        const resolvedMembers = await Promise.all(members.map(async (m) => {
+            if (m.start_location_type === 'station' && m.start_station_id) {
+                const { data: station } = await supabase.from('stations').select('lat, lng').eq('id', m.start_station_id).single()
+                if (station) return { ...m, location: { lat: station.lat, lng: station.lng, address: 'Station' } }
+            }
+            return m
+        }))
+
+        const activeMembers = resolvedMembers.filter(m => m.status === 'ready' && m.location && (m.location.lat !== 0 || m.location.lng !== 0));
         if (activeMembers.length === 0) return [];
 
-        const memberLocations = activeMembers.map(m => m.location!);
+        const memberLocations = activeMembers.map(m => m.location! as Coordinates);
 
         // A. Geometric Center & Shortlisting
         const centroid = triangulationService.calculateCentroid(memberLocations);
