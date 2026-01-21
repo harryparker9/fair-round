@@ -10,7 +10,8 @@ import { startAreaVoting, endRound, regressStage } from '@/actions/voting'
 import { AreaVotingView } from '@/components/area-voting-view'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
-import { LogOut, Settings } from 'lucide-react'
+import { LogOut, Settings, Users, ChevronDown } from 'lucide-react'
+import { PartyMemberRoster } from '@/components/party-member-roster'
 
 interface RoundManagerProps {
     roundId: string
@@ -26,6 +27,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
     const [loading, setLoading] = useState(true)
     const [recommendations, setRecommendations] = useState<PubRecommendation[] | null>(null)
     const [isEditingSettings, setIsEditingSettings] = useState(false)
+    const [isRosterOpen, setIsRosterOpen] = useState(false)
 
     // Status States
     const [triangulating, setTriangulating] = useState(false)
@@ -215,9 +217,17 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                     <span className="text-pint-gold font-mono text-xl font-bold leading-none">{code}</span>
                 </div>
 
-                {/* Center: Stage Name (Optional, but nice) */}
-                <div className="absolute left-1/2 transform -translate-x-1/2">
-                    {isHost && <span className="text-[10px] bg-pint-gold/20 text-pint-gold px-2 py-0.5 rounded font-bold border border-pint-gold/30">HOST</span>}
+                {/* Center: Roster Toggle */}
+                <div className="absolute left-1/2 transform -translate-x-1/2 flex flex-col items-center">
+                    <button
+                        onClick={() => setIsRosterOpen(!isRosterOpen)}
+                        className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-full transition-all active:scale-95"
+                    >
+                        <Users className="w-4 h-4 text-pint-gold" />
+                        <span className="text-sm font-bold text-white">{uniqueMembers.length}</span>
+                        <ChevronDown className={cn("w-3 h-3 text-white/50 transition-transform", isRosterOpen && "rotate-180")} />
+                    </button>
+                    {isHost && <span className="text-[8px] tracking-widest text-pint-gold uppercase mt-1 opacity-60">HOST</span>}
                 </div>
 
                 {/* Right: Host Controls & Exit */}
@@ -263,6 +273,16 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                     </Button>
                 </div>
             </div>
+
+            {/* Roster Panel */}
+            <PartyMemberRoster
+                members={uniqueMembers}
+                isOpen={isRosterOpen}
+                onClose={() => setIsRosterOpen(false)}
+                isHost={isHost}
+                roundHostId={roundHostId}
+                currentStage={stage}
+            />
 
             <div className="mt-20 w-full max-w-md p-4 space-y-8 animate-fade-in-up flex flex-col items-center pb-20">
 
