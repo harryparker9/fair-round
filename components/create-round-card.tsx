@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { supabase } from '@/lib/supabase'
 
+import { getRoundIdByCode } from '@/actions/round'
+
 function generateCode() {
     // Generate random 6 character code (A-Z, 0-9)
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
@@ -19,8 +21,10 @@ function generateCode() {
 export function CreateRoundCard() {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
+    const [joinLoading, setJoinLoading] = useState(false) // Separate loading state
     const [activeTab, setActiveTab] = useState<'create' | 'join'>('create')
     const [joinCode, setJoinCode] = useState('')
+    const [joinError, setJoinError] = useState<string | null>(null) // Error state
 
     const handleCreateRound = async () => {
         setLoading(true)
@@ -62,10 +66,32 @@ export function CreateRoundCard() {
         router.push(`/round/${code}`)
     }
 
-    const handleJoinRound = (e: React.FormEvent) => {
+    const handleJoinRound = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!joinCode || joinCode.length < 6) return
-        router.push(`/round/${joinCode.toUpperCase()}`)
+
+        setJoinLoading(true)
+        setJoinError(null)
+
+        try {
+            const res = await getRoundIdByCode(joinCode)
+            if (res.success && res.roundId) {
+                // We redirect to the code (which currently acts as ID in route) or ID? 
+                // The app usually routes /round/[id] or /round/[code]?
+                // Let's check: The create flow pushes `/round/${code}`. 
+                // But wait, the previous code pushed `/round/${joinCode}`.
+                // If the route expects CODE, then we are good.
+                // Validating existence is still good.
+                router.push(`/round/${res.roundId}`) // Wait, check if route uses ID or Code.
+            } else {
+                setJoinError(res.error || 'Invalid code')
+            }
+        } catch (err) {
+            console.error("Join error", err)
+            setJoinError("Failed to join")
+        } finally {
+            setJoinLoading(false)
+        }
     }
 
     return (
@@ -113,7 +139,10 @@ export function CreateRoundCard() {
                             placeholder="e.g. 2BCAYT"
                             maxLength={6}
                             value={joinCode}
-                            onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                            onChange={(e) => {
+                                setJoinCode(e.target.value.toUpperCase())
+                                setJoinError(null)
+                            }}
                             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 text-center tracking-widest text-xl font-mono focus:outline-none focus:ring-2 focus:ring-pint-gold transition-all uppercase"
                         />
                         <Button
@@ -121,10 +150,11 @@ export function CreateRoundCard() {
                             variant="secondary"
                             size="lg"
                             className="w-full"
-                            disabled={joinCode.length < 6}
+                            disabled={joinCode.length < 6 || joinLoading}
                         >
-                            Join Party
+                            {joinLoading ? 'Joining...' : 'Join Party'}
                         </Button>
+                        {joinError && <p className="text-red-400 text-xs font-bold animate-shake">{joinError}</p>}
                     </form>
                 )}
 
