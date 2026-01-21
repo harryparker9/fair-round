@@ -71,6 +71,7 @@ async function getStats() {
 export default async function AdminPage({ searchParams }: AdminPageProps) {
     const params = await searchParams
     const secret = params.secret
+    console.log(`Checking admin secret...`)
 
     if (secret !== process.env.ADMIN_SECRET) {
         console.error(`Admin access attempt blocked. Provided secret: '${secret}'`)
