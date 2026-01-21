@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_GENERATIVE_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
 const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" }); // Use explicit version
+const model = genAI.getGenerativeModel({ model: "gemini-pro" }); // Fallback to standard Pro model
 
 export const gemini = {
     generateVibeCheck: async (pubName: string, vicinity: string, rating: number, preferences: string[] = []) => {
@@ -26,8 +26,8 @@ export const gemini = {
             return response.text().trim();
         } catch (error: any) {
             console.error("Gemini Error:", error);
-            // Fallback: Expose error for debugging
-            return `AI Error: ${error.message || "Unknown Error"}`;
+            // Fallback: Expose error for debugging with Timestamp to verify deployment
+            return `AI Error (${new Date().toISOString().slice(11, 19)}): ${error.message || "Unknown Error"}`;
         }
     },
 
