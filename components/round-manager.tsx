@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { JoinRoundForm } from '@/components/join-round-form'
 import { Button } from '@/components/ui/button'
 import { ResultsView } from '@/components/results-view'
