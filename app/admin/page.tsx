@@ -73,9 +73,16 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     const secret = params.secret
 
     if (secret !== process.env.ADMIN_SECRET) {
+        console.error(`Admin access attempt blocked. Provided secret: '${secret}'`)
         return (
-            <div className="min-h-screen flex items-center justify-center bg-charcoal text-white">
-                <h1 className="text-4xl font-bold">403 Forbidden</h1>
+            <div className="min-h-screen flex flex-col items-center justify-center bg-charcoal text-white p-4 text-center">
+                <h1 className="text-4xl font-bold text-pint-gold mb-4">403 Forbidden</h1>
+                <p className="text-white/60 mb-8 max-w-md">
+                    Access to this page is restricted. Please ensure you have the correct administrative secret in the URL.
+                </p>
+                <div className="text-xs text-white/20 font-mono bg-black/20 px-4 py-2 rounded">
+                    Error: INVALID_SECRET
+                </div>
             </div>
         )
     }
