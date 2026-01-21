@@ -162,3 +162,43 @@ export async function regressStage(roundId: string, currentStage: string) {
     if (error) throw error
     return { success: true, targetStage }
 }
+
+// 7. Update Party Member (with Auto-Regression)
+export async function updatePartyMember(roundId: string, memberId: string, data: any) {
+    const db = supabaseAdmin || supabase;
+
+    // 1. Update the member
+    const { error: updateError } = await db
+        .from('party_members')
+        .update(data)
+        .eq('id', memberId)
+
+    if (updateError) throw updateError
+
+    // 2. Check Round Stage
+    const { data: round } = await db
+        .from('rounds')
+        .select('stage')
+        .eq('id', roundId)
+        .single()
+
+    // 3. If needed, Regress and Notify
+    if (round && round.stage !== 'lobby') {
+        const { data: member } = await db.from('party_members').select('name').eq('id', memberId).single()
+        const memberName = member?.name || 'A member'
+
+        // Fetch current settings to preserve them
+        const { data: currentRound } = await db.from('rounds').select('settings').eq('id', roundId).single()
+        const existingSettings = currentRound?.settings || {}
+
+        await db.from('rounds').update({
+            stage: 'lobby',
+            area_options: [], // Clear calculations
+            settings: { ...existingSettings, system_message: `${memberName} changed their location. Recalculating...` }
+        }).eq('id', roundId)
+
+        return { success: true, regressed: true }
+    }
+
+    return { success: true, regressed: false }
+}

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { ResultsView } from '@/components/results-view'
 import { PubRecommendation, AreaOption } from '@/types'
 import { supabase } from '@/lib/supabase'
-import { startAreaVoting, endRound, regressStage } from '@/actions/voting'
+import { startAreaVoting, endRound, regressStage, updatePartyMember } from '@/actions/voting'
 import { AreaVotingView } from '@/components/area-voting-view'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
@@ -40,10 +40,19 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
     const [members, setMembers] = useState<any[]>([])
     const [roundHostId, setRoundHostId] = useState<string | null>(null)
     const [winningPubId, setWinningPubId] = useState<string | null>(null)
+    const [systemMessage, setSystemMessage] = useState<string | null>(null)
 
     // User Identity
     const [myMemberId, setMyMemberId] = useState<string | null>(null)
     const [myUserId, setMyUserId] = useState<string | null>(null)
+
+    // Clear system message after 5 seconds
+    useEffect(() => {
+        if (systemMessage) {
+            const timer = setTimeout(() => setSystemMessage(null), 5000)
+            return () => clearTimeout(timer)
+        }
+    }, [systemMessage])
 
     // 1. Check identity
     useEffect(() => {
@@ -105,6 +114,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
 
                     if (newRound.area_options) setAreaOptions(newRound.area_options)
                     if (newRound.settings?.winning_pub_id) setWinningPubId(newRound.settings.winning_pub_id)
+                    if (newRound.settings?.system_message) setSystemMessage(newRound.settings.system_message)
 
                     // Fetch recommendations if moving to pub_voting or results
                     if ((newRound.stage === 'pub_voting' || newRound.stage === 'results') && !recommendations) {
@@ -283,6 +293,13 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                 roundHostId={roundHostId}
                 currentStage={stage}
             />
+
+            {/* System Message Toast */}
+            {systemMessage && (
+                <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[60] bg-pint-gold text-charcoal px-4 py-2 rounded-full shadow-lg font-bold text-sm animate-in fade-in slide-in-from-top-4">
+                    📢 {systemMessage}
+                </div>
+            )}
 
             <div className="mt-20 w-full max-w-md p-4 space-y-8 animate-fade-in-up flex flex-col items-center pb-20">
 

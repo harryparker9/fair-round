@@ -6,6 +6,7 @@ import { SelfieCapture } from '@/components/selfie-capture'
 import { supabase } from '@/lib/supabase'
 import { identifyLocation, geocodeAddress } from '@/actions/location'
 import { searchStations } from '@/actions/stations'
+import { updatePartyMember } from '@/actions/voting'
 import { MapPin, Train, RefreshCw, Home, Map as MapIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MapPicker } from '@/components/map-picker'
@@ -242,11 +243,13 @@ export function JoinRoundForm({ roundId, existingMembers = [], onJoin, initialDa
 
             if (isUpdate && initialData?.id) {
                 // UPDATE
-                const { error } = await supabase
-                    .from('party_members')
-                    .update(payload)
-                    .eq('id', initialData.id)
-                if (error) throw error
+                // @ts-ignore
+                const res = await updatePartyMember(roundId, initialData.id, payload)
+                if (res.regressed) {
+                    // The RoundManager will handle the redirect/message via realtime, 
+                    // but we should probably close the form or reload. 
+                    // Actually onJoin() usually reloads or closes the modal.
+                }
             } else {
                 // INSERT / CHECK
                 const { data: existingMember } = await supabase
