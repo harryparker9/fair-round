@@ -41,18 +41,43 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
     const [roundHostId, setRoundHostId] = useState<string | null>(null)
     const [winningPubId, setWinningPubId] = useState<string | null>(null)
     const [systemMessage, setSystemMessage] = useState<string | null>(null)
+    const lastSystemMessage = useRef<string | null>(null)
+
+    // Data Helpers
+    const [stationNames, setStationNames] = useState<Record<string, string>>({})
 
     // User Identity
     const [myMemberId, setMyMemberId] = useState<string | null>(null)
     const [myUserId, setMyUserId] = useState<string | null>(null)
 
-    // Clear system message after 5 seconds
+    // Clear system message after 3 seconds, avoid re-showing same message
     useEffect(() => {
         if (systemMessage) {
-            const timer = setTimeout(() => setSystemMessage(null), 5000)
+            const timer = setTimeout(() => {
+                setSystemMessage(null)
+                // We keep lastSystemMessage to prevent immediate re-trigger by same payload
+            }, 3000)
             return () => clearTimeout(timer)
         }
     }, [systemMessage])
+
+    // Load Station Names helper
+    const loadStationNames = async (currMembers: any[]) => {
+        const ids = new Set<string>()
+        currMembers.forEach(m => {
+            if (m.start_station_id) ids.add(m.start_station_id)
+            if (m.end_station_id) ids.add(m.end_station_id)
+        })
+
+        if (ids.size === 0) return
+
+        const { data } = await supabase.from('stations').select('id, name').in('id', Array.from(ids))
+        if (data) {
+            const map: Record<string, string> = {}
+            data.forEach(s => map[s.id] = s.name)
+            setStationNames(prev => ({ ...prev, ...map }))
+        }
+    }
 
     // 1. Check identity
     useEffect(() => {
@@ -80,6 +105,12 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                     setWinningPubId(roundData.settings.winning_pub_id)
                 }
 
+                // Set initial message only if new
+                if (roundData.settings?.system_message && roundData.settings.system_message !== lastSystemMessage.current) {
+                    setSystemMessage(roundData.settings.system_message)
+                    lastSystemMessage.current = roundData.settings.system_message
+                }
+
                 if (roundData.stage === 'results' || roundData.stage === 'pub_voting') {
                     const { data: cache } = await supabase.from('pub_cache').select('results').eq('round_id', roundId).single()
                     if (cache) setRecommendations(cache.results)
@@ -87,7 +118,10 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
             }
 
             const { data: memData } = await supabase.from('party_members').select('*').eq('round_id', roundId)
-            if (memData) setMembers(memData)
+            if (memData) {
+                setMembers(memData)
+                loadStationNames(memData)
+            }
         }
         initData()
     }, [roundId])
@@ -97,12 +131,13 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
         const channel = supabase
             .channel(`round_lobby_${roundId}`)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'party_members', filter: `round_id=eq.${roundId}` },
-                (payload) => {
+                async (payload) => {
                     console.log("Realtime Member Update:", payload)
-                    if (payload.eventType === 'INSERT') {
-                        setMembers(prev => [...prev, payload.new])
-                    } else if (payload.eventType === 'UPDATE') {
-                        setMembers(prev => prev.map(m => m.id === payload.new.id ? payload.new : m))
+                    // Refresh members to ensure consistency and fetch stations
+                    const { data: memData } = await supabase.from('party_members').select('*').eq('round_id', roundId)
+                    if (memData) {
+                        setMembers(memData)
+                        loadStationNames(memData)
                     }
                 })
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rounds', filter: `id=eq.${roundId}` },
@@ -114,7 +149,11 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
 
                     if (newRound.area_options) setAreaOptions(newRound.area_options)
                     if (newRound.settings?.winning_pub_id) setWinningPubId(newRound.settings.winning_pub_id)
-                    if (newRound.settings?.system_message) setSystemMessage(newRound.settings.system_message)
+
+                    if (newRound.settings?.system_message && newRound.settings.system_message !== lastSystemMessage.current) {
+                        setSystemMessage(newRound.settings.system_message)
+                        lastSystemMessage.current = newRound.settings.system_message
+                    }
 
                     // Fetch recommendations if moving to pub_voting or results
                     if ((newRound.stage === 'pub_voting' || newRound.stage === 'results') && !recommendations) {
@@ -292,6 +331,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                 isHost={isHost}
                 roundHostId={roundHostId}
                 currentStage={stage}
+                stationNames={stationNames}
             />
 
             {/* System Message Toast */}

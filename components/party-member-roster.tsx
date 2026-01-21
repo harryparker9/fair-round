@@ -8,9 +8,10 @@ interface PartyMemberRosterProps {
     isHost: boolean
     roundHostId: string | null
     currentStage: string
+    stationNames?: Record<string, string>
 }
 
-export function PartyMemberRoster({ members, isOpen, onClose, isHost, roundHostId, currentStage }: PartyMemberRosterProps) {
+export function PartyMemberRoster({ members, isOpen, onClose, isHost, roundHostId, currentStage, stationNames = {} }: PartyMemberRosterProps) {
     if (!isOpen) return null
 
     return (
@@ -32,8 +33,26 @@ export function PartyMemberRoster({ members, isOpen, onClose, isHost, roundHostI
 
                 <div className="overflow-y-auto p-4 space-y-3">
                     {members.map((member) => {
-                        const isRoundHost = member.user_id === roundHostId // If we track user_id in members
-                        // Fallback: we might not track roundHostId -> member mapping perfectly in frontend yet, so we can rely on isHost prop if needed or just skip for now.
+                        const isRoundHost = member.user_id === roundHostId
+
+                        // Resolve Start Text
+                        let startText = 'Location Set'
+                        if (member.start_location_type === 'station') {
+                            startText = stationNames[member.start_station_id] || 'Station'
+                        } else if (member.start_location_type === 'live' || member.start_location_type === 'custom') {
+                            startText = member.location?.address || 'Pinned Location'
+                            // Clean up address (remove postcode if too long)
+                            if (startText.length > 30) startText = startText.split(',')[0] + '...'
+                        }
+
+                        // Resolve End Text
+                        let endText = 'Returns to Start'
+                        if (member.end_location_type === 'station') {
+                            endText = stationNames[member.end_station_id] || 'Station Base'
+                        } else if (member.end_location_type === 'custom') {
+                            // Uses coordinates, so no address stored usually. 
+                            endText = 'Custom Return'
+                        }
 
                         return (
                             <div key={member.id} className="bg-white/5 rounded-xl p-3 flex gap-3 items-center border border-white/5">
@@ -57,30 +76,34 @@ export function PartyMemberRoster({ members, isOpen, onClose, isHost, roundHostI
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2">
                                         <span className="text-white font-bold truncate">{member.name}</span>
-                                        {/* Host Badge? We might not have roundHostId mapped to member.user_id readily available in this view, skipping for safe MVP unless passed explicitly */}
                                     </div>
 
-                                    <div className="flex flex-col gap-0.5 mt-1">
+                                    <div className="flex flex-col gap-1 mt-1">
                                         {/* Start Location */}
-                                        <div className="flex items-center gap-1.5 text-xs text-white/60">
+                                        <div className="flex items-center gap-1.5 text-xs text-white/80">
                                             {member.start_location_type === 'station' ? <Train className="w-3 h-3 text-pint-gold" /> :
                                                 member.start_location_type === 'live' ? <MapPin className="w-3 h-3 text-fairness-green" /> :
                                                     <MapPin className="w-3 h-3 text-white" />}
-                                            <span className="truncate">
-                                                {member.start_location_type === 'station' ? `Station` : // ideally we show station name if we had it joined or stored
-                                                    member.location?.address || 'Location Set'}
+                                            <span className="truncate max-w-[200px]" title={startText}>
+                                                {startText}
                                             </span>
                                         </div>
 
-                                        {/* End Location */}
-                                        <div className="flex items-center gap-1.5 text-xs text-white/40">
-                                            {member.end_location_type === 'station' ? <Train className="w-3 h-3" /> :
-                                                member.end_location_type === 'same' ? <Home className="w-3 h-3" /> :
-                                                    <MapPin className="w-3 h-3" />}
-                                            <span className="truncate">
-                                                {member.end_location_type === 'same' ? 'Returns to Start' : 'Different Return'}
-                                            </span>
-                                        </div>
+                                        {/* End Location - Only show if different */}
+                                        {member.end_location_type !== 'same' && (
+                                            <div className="flex items-center gap-1.5 text-xs text-white/50">
+                                                {member.end_location_type === 'station' ? <Train className="w-3 h-3" /> : <Home className="w-3 h-3" />}
+                                                <span className="truncate max-w-[200px]">
+                                                    {endText}
+                                                </span>
+                                            </div>
+                                        )}
+                                        {member.end_location_type === 'same' && (
+                                            <div className="flex items-center gap-1.5 text-xs text-white/30">
+                                                <Home className="w-3 h-3" />
+                                                <span>Return same</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
