@@ -6,8 +6,9 @@ import { SelfieCapture } from '@/components/selfie-capture'
 import { supabase } from '@/lib/supabase'
 import { identifyLocation, geocodeAddress } from '@/actions/location'
 import { searchStations } from '@/actions/stations'
-import { MapPin, Train, RefreshCw, Home } from 'lucide-react'
+import { MapPin, Train, RefreshCw, Home, Map as MapIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { MapPicker } from '@/components/map-picker'
 
 interface JoinRoundFormProps {
     roundId: string // UUID from DB
@@ -45,6 +46,10 @@ export function JoinRoundForm({ roundId, onJoin }: JoinRoundFormProps) {
     // Custom End Data
     const [customEndQuery, setCustomEndQuery] = useState('')
     const [selectedCustomEnd, setSelectedCustomEnd] = useState<{ lat: number, lng: number, address: string } | null>(null)
+
+    // Map Picker State
+    const [showStartMap, setShowStartMap] = useState(false)
+    const [showEndMap, setShowEndMap] = useState(false)
 
     // Search Stations Effect
     useEffect(() => {
@@ -103,6 +108,24 @@ export function JoinRoundForm({ roundId, onJoin }: JoinRoundFormProps) {
         } else {
             alert("Address not found")
         }
+    }
+
+    const handleMapStartConfirm = (loc: { lat: number, lng: number }) => {
+        setSelectedCustomStart({
+            lat: loc.lat,
+            lng: loc.lng,
+            address: `Pinned Location (${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)})`
+        })
+        setShowStartMap(false)
+    }
+
+    const handleMapEndConfirm = (loc: { lat: number, lng: number }) => {
+        setSelectedCustomEnd({
+            lat: loc.lat,
+            lng: loc.lng,
+            address: `Pinned Location (${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)})`
+        })
+        setShowEndMap(false)
     }
 
     const handleGetLocation = () => {
@@ -338,9 +361,23 @@ export function JoinRoundForm({ roundId, onJoin }: JoinRoundFormProps) {
                                     <button type="button" onClick={() => { setSelectedCustomStart(null); setCustomStartQuery(''); }} className="text-white/60 hover:text-white">✕</button>
                                 </div>
                             )}
+
+                            <div className="flex justify-center">
+                                <button type="button" onClick={() => setShowStartMap(true)} className="flex items-center gap-1 text-xs text-pint-gold hover:underline">
+                                    <MapIcon className="w-3 h-3" /> Pin on Map instead
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
+
+                {showStartMap && (
+                    <MapPicker
+                        onConfirm={handleMapStartConfirm}
+                        onClose={() => setShowStartMap(false)}
+                        initialCenter={location || undefined}
+                    />
+                )}
 
                 {/* 3. End Location */}
                 <div className="space-y-3 pt-2">
@@ -416,9 +453,23 @@ export function JoinRoundForm({ roundId, onJoin }: JoinRoundFormProps) {
                                     <button type="button" onClick={() => { setSelectedCustomEnd(null); setCustomEndQuery(''); }} className="text-white/60 hover:text-white">✕</button>
                                 </div>
                             )}
+
+                            <div className="flex justify-center">
+                                <button type="button" onClick={() => setShowEndMap(true)} className="flex items-center gap-1 text-xs text-pint-gold hover:underline">
+                                    <MapIcon className="w-3 h-3" /> Pin on Map instead
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
+
+                {showEndMap && (
+                    <MapPicker
+                        onConfirm={handleMapEndConfirm}
+                        onClose={() => setShowEndMap(false)}
+                        initialCenter={selectedCustomStart ? { lat: selectedCustomStart.lat, lng: selectedCustomStart.lng } : (location || undefined)}
+                    />
+                )}
 
                 <Button
                     type="submit"
