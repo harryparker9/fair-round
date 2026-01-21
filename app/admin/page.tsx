@@ -74,21 +74,17 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     const secret = params.secret
     console.log(`Checking admin secret...`)
 
-    if (secret !== process.env.ADMIN_SECRET) {
-        console.error(`Admin access attempt blocked. Provided secret: '${secret}'`)
+    // Case-insensitive comparison for better UX
+    if (secret?.toLowerCase() !== process.env.ADMIN_SECRET?.toLowerCase()) {
+        console.error(`Admin access attempt blocked. Provided: '${secret}', Expected (hashed): ***`)
         return (
             <div className="min-h-screen flex flex-col items-center justify-center bg-charcoal text-white p-4 text-center">
                 <h1 className="text-4xl font-bold text-pint-gold mb-4">403 Forbidden</h1>
                 <p className="text-white/60 mb-8 max-w-md">
                     Access to this page is restricted. Please ensure you have the correct administrative secret in the URL.
                 </p>
-                <div className="text-left text-xs text-white/40 font-mono bg-black/20 p-4 rounded space-y-2">
-                    <div>Error: INVALID_SECRET</div>
-                    <div className="w-full h-px bg-white/10 my-2"></div>
-                    <div><strong>Debug Info:</strong></div>
-                    <div>URL Parameter: "{secret}" (Length: {secret?.length || 0})</div>
-                    <div>Env Var (ADMIN_SECRET): {process.env.ADMIN_SECRET ? `"***${process.env.ADMIN_SECRET.slice(-4)}"` : "UNDEFINED"} (Length: {process.env.ADMIN_SECRET?.length || 0})</div>
-                    <div>Validation: {secret === process.env.ADMIN_SECRET ? "MATCH" : "MISMATCH"}</div>
+                <div className="text-xs text-white/20 font-mono bg-black/20 px-4 py-2 rounded">
+                    Error: INVALID_SECRET
                 </div>
             </div>
         )
