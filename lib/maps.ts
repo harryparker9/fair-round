@@ -109,5 +109,28 @@ export const maps = {
             console.error("Place Details Error:", e);
             return null;
         }
+    },
+
+    // Geocode Address -> Lat/Lng
+    geocode: async (address: string) => {
+        if (!key) throw new Error("Missing Google Maps API Key");
+
+        try {
+            const res = await client.geocode({
+                params: {
+                    address,
+                    key
+                }
+            });
+
+            if (res.data.results.length > 0) {
+                const location = res.data.results[0].geometry.location;
+                return { lat: location.lat, lng: location.lng, formatted_address: res.data.results[0].formatted_address };
+            }
+            return null;
+        } catch (error) {
+            console.error("Geocode Error", error);
+            return null;
+        }
     }
 };

@@ -38,13 +38,15 @@ export interface PartyMember {
         address?: string
     }
     // Location Preference Fields
-    start_location_type?: 'live' | 'station'
+    start_location_type?: 'live' | 'station' | 'custom'
     start_station_id?: string
-    end_location_type?: 'same' | 'station'
+    end_location_type?: 'same' | 'station' | 'custom'
     end_station_id?: string
 
     vote_area_id?: string // New
     joined_at: string
+    end_lat?: number
+    end_lng?: number
 }
 
 export interface PubRecommendation {

@@ -35,6 +35,8 @@ export const triangulationService = {
             if (m.end_location_type === 'station' && m.end_station_id) {
                 const { data: s } = await supabase.from('stations').select('lat, lng').eq('id', m.end_station_id).single()
                 if (s) endLoc = { lat: s.lat, lng: s.lng, address: 'End Station' };
+            } else if (m.end_location_type === 'custom' && m.end_lat && m.end_lng) {
+                endLoc = { lat: m.end_lat, lng: m.end_lng, address: 'Custom End' };
             } else {
                 endLoc = startLoc;
             }
@@ -208,6 +210,8 @@ export const triangulationService = {
             if (m.end_location_type === 'station' && m.end_station_id) {
                 const { data: s } = await supabase.from('stations').select('lat, lng').eq('id', m.end_station_id).single()
                 if (s) endLoc = { lat: s.lat, lng: s.lng, address: 'End Station' };
+            } else if (m.end_location_type === 'custom' && m.end_lat && m.end_lng) {
+                endLoc = { lat: m.end_lat, lng: m.end_lng, address: 'Custom End' };
             } else {
                 // if 'same' or 'live', end is start
                 endLoc = startLoc;

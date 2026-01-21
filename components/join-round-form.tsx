@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { SelfieCapture } from '@/components/selfie-capture'
 import { supabase } from '@/lib/supabase'
-import { identifyLocation } from '@/actions/location'
+import { identifyLocation, geocodeAddress } from '@/actions/location'
 import { searchStations } from '@/actions/stations'
 import { MapPin, Train, RefreshCw, Home } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -21,8 +21,8 @@ export function JoinRoundForm({ roundId, onJoin }: JoinRoundFormProps) {
     const [skipSelfie, setSkipSelfie] = useState(false)
 
     // Location State
-    const [startMode, setStartMode] = useState<'live' | 'station'>('live')
-    const [endMode, setEndMode] = useState<'same' | 'station'>('same')
+    const [startMode, setStartMode] = useState<'live' | 'station' | 'custom'>('live')
+    const [endMode, setEndMode] = useState<'same' | 'station' | 'custom'>('same')
 
     // Live Location Data
     const [location, setLocation] = useState<{ lat: number, lng: number } | null>(null)
@@ -32,9 +32,19 @@ export function JoinRoundForm({ roundId, onJoin }: JoinRoundFormProps) {
     const [stationQuery, setStationQuery] = useState('')
     const [stationResults, setStationResults] = useState<any[]>([])
     const [selectedStartStation, setSelectedStartStation] = useState<any | null>(null)
+
+    // Custom Start Data
+    const [customStartQuery, setCustomStartQuery] = useState('')
+    const [selectedCustomStart, setSelectedCustomStart] = useState<{ lat: number, lng: number, address: string } | null>(null)
+
+    // End Data
     const [selectedEndStation, setSelectedEndStation] = useState<any | null>(null)
     const [endStationQuery, setEndStationQuery] = useState('')
     const [endStationResults, setEndStationResults] = useState<any[]>([])
+
+    // Custom End Data
+    const [customEndQuery, setCustomEndQuery] = useState('')
+    const [selectedCustomEnd, setSelectedCustomEnd] = useState<{ lat: number, lng: number, address: string } | null>(null)
 
     // Search Stations Effect
     useEffect(() => {
@@ -62,6 +72,38 @@ export function JoinRoundForm({ roundId, onJoin }: JoinRoundFormProps) {
         return () => clearTimeout(delayDebounceFn)
     }, [endStationQuery])
 
+
+    const handleGeocodeStart = async () => {
+        if (!customStartQuery) return
+        setStatus('locating')
+        const res = await geocodeAddress(customStartQuery)
+        setStatus('idle')
+        if (res.success && res.location) {
+            setSelectedCustomStart({
+                lat: res.location.lat,
+                lng: res.location.lng,
+                address: res.location.formatted_address
+            })
+        } else {
+            alert("Address not found")
+        }
+    }
+
+    const handleGeocodeEnd = async () => {
+        if (!customEndQuery) return
+        setStatus('locating')
+        const res = await geocodeAddress(customEndQuery)
+        setStatus('idle')
+        if (res.success && res.location) {
+            setSelectedCustomEnd({
+                lat: res.location.lat,
+                lng: res.location.lng,
+                address: res.location.formatted_address
+            })
+        } else {
+            alert("Address not found")
+        }
+    }
 
     const handleGetLocation = () => {
         setStatus('locating')
@@ -97,9 +139,24 @@ export function JoinRoundForm({ roundId, onJoin }: JoinRoundFormProps) {
         if (!name) return
 
         // Validate Location logic
-        const finalLocation = startMode === 'live' ? location : { lat: 0, lng: 0, address: selectedStartStation?.name }
-        if (startMode === 'live' && !location) return
-        if (startMode === 'station' && !selectedStartStation) return
+        let finalLocation = null
+        if (startMode === 'live') {
+            if (!location) return
+            finalLocation = location
+        } else if (startMode === 'station') {
+            if (!selectedStartStation) return
+            finalLocation = { lat: 0, lng: 0, address: selectedStartStation.name } // Station ID handled separately
+        } else if (startMode === 'custom') {
+            if (!selectedCustomStart) return
+            finalLocation = { lat: selectedCustomStart.lat, lng: selectedCustomStart.lng, address: selectedCustomStart.address }
+        }
+
+        // Validate End Location
+        let finalEndLocation = null
+        if (endMode === 'custom') {
+            if (!selectedCustomEnd) return
+            finalEndLocation = { lat: selectedCustomEnd.lat, lng: selectedCustomEnd.lng }
+        }
 
         setStatus('uploading')
         try {
@@ -133,7 +190,11 @@ export function JoinRoundForm({ roundId, onJoin }: JoinRoundFormProps) {
                         start_location_type: startMode,
                         start_station_id: startMode === 'station' ? selectedStartStation.id : null,
                         end_location_type: endMode,
-                        end_station_id: endMode === 'station' ? selectedEndStation?.id : null
+                        end_station_id: endMode === 'station' ? selectedEndStation?.id : null,
+                        // @ts-ignore - Columns added via migration
+                        end_lat: finalEndLocation?.lat,
+                        // @ts-ignore
+                        end_lng: finalEndLocation?.lng
                     }])
                     .select()
                     .single()
@@ -192,15 +253,18 @@ export function JoinRoundForm({ roundId, onJoin }: JoinRoundFormProps) {
                 <div className="space-y-3">
                     <label className="text-xs uppercase tracking-widest text-white/50 font-bold block text-center">Start Location</label>
                     <div className="flex bg-white/5 p-1 rounded-lg">
-                        <button type="button" onClick={() => setStartMode('live')} className={cn("flex-1 py-2 text-sm rounded-md transition-all flex items-center justify-center gap-2", startMode === 'live' ? "bg-fairness-green text-charcoal font-bold shadow-lg" : "text-white/60 hover:text-white")}>
-                            <MapPin className="w-4 h-4" /> Live
+                        <button type="button" onClick={() => setStartMode('live')} className={cn("flex-1 py-2 text-xs rounded-md transition-all flex items-center justify-center gap-1", startMode === 'live' ? "bg-fairness-green text-charcoal font-bold shadow-lg" : "text-white/60 hover:text-white")}>
+                            <MapPin className="w-3 h-3" /> Live
                         </button>
-                        <button type="button" onClick={() => setStartMode('station')} className={cn("flex-1 py-2 text-sm rounded-md transition-all flex items-center justify-center gap-2", startMode === 'station' ? "bg-pint-gold text-charcoal font-bold shadow-lg" : "text-white/60 hover:text-white")}>
-                            <Train className="w-4 h-4" /> Station
+                        <button type="button" onClick={() => setStartMode('station')} className={cn("flex-1 py-2 text-xs rounded-md transition-all flex items-center justify-center gap-1", startMode === 'station' ? "bg-pint-gold text-charcoal font-bold shadow-lg" : "text-white/60 hover:text-white")}>
+                            <Train className="w-3 h-3" /> Station
+                        </button>
+                        <button type="button" onClick={() => setStartMode('custom')} className={cn("flex-1 py-2 text-xs rounded-md transition-all flex items-center justify-center gap-1", startMode === 'custom' ? "bg-white text-charcoal font-bold shadow-lg" : "text-white/60 hover:text-white")}>
+                            <MapPin className="w-3 h-3" /> Address
                         </button>
                     </div>
 
-                    {startMode === 'live' ? (
+                    {startMode === 'live' && (
                         !location ? (
                             <Button type="button" onClick={handleGetLocation} variant="secondary" className="w-full" disabled={status === 'locating'}>
                                 {status === 'locating' ? 'Locating...' : '📍 Share Current Location'}
@@ -211,7 +275,9 @@ export function JoinRoundForm({ roundId, onJoin }: JoinRoundFormProps) {
                                 <button type="button" onClick={() => { setLocation(null); setLocationName(null); }} className="text-white/40 hover:text-white p-1"><RefreshCw className="w-4 h-4" /></button>
                             </div>
                         )
-                    ) : (
+                    )}
+
+                    {startMode === 'station' && (
                         <div className="relative">
                             {!selectedStartStation ? (
                                 <input
@@ -245,17 +311,49 @@ export function JoinRoundForm({ roundId, onJoin }: JoinRoundFormProps) {
                             )}
                         </div>
                     )}
+
+                    {startMode === 'custom' && (
+                        <div className="relative space-y-2">
+                            {!selectedCustomStart ? (
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Postcode or Address..."
+                                        value={customStartQuery}
+                                        onChange={(e) => setCustomStartQuery(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleGeocodeStart())}
+                                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pint-gold"
+                                        autoFocus
+                                    />
+                                    <Button type="button" onClick={handleGeocodeStart} disabled={!customStartQuery || status === 'locating'} variant="secondary">
+                                        Search
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="bg-white/10 border border-white/20 p-3 rounded-xl flex justify-between items-center">
+                                    <div className="text-left">
+                                        <p className="text-white font-bold text-sm truncate max-w-[200px]">{selectedCustomStart.address}</p>
+                                        <p className="text-white/40 text-xs">Custom Start</p>
+                                    </div>
+                                    <button type="button" onClick={() => { setSelectedCustomStart(null); setCustomStartQuery(''); }} className="text-white/60 hover:text-white">✕</button>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* 3. End Location */}
                 <div className="space-y-3 pt-2">
                     <label className="text-xs uppercase tracking-widest text-white/50 font-bold block text-center">End Location</label>
                     <div className="flex bg-white/5 p-1 rounded-lg">
-                        <button type="button" onClick={() => setEndMode('same')} className={cn("flex-1 py-2 text-sm rounded-md transition-all flex items-center justify-center gap-2", endMode === 'same' ? "bg-white/20 text-white font-bold" : "text-white/40 hover:text-white")}>
-                            <RefreshCw className="w-4 h-4" /> &quot;Same as Start&quot;
+                        <button type="button" onClick={() => setEndMode('same')} className={cn("flex-1 py-2 text-xs rounded-md transition-all flex items-center justify-center gap-1", endMode === 'same' ? "bg-white/20 text-white font-bold" : "text-white/40 hover:text-white")}>
+                            <RefreshCw className="w-3 h-3" /> Same
                         </button>
-                        <button type="button" onClick={() => setEndMode('station')} className={cn("flex-1 py-2 text-sm rounded-md transition-all flex items-center justify-center gap-2", endMode === 'station' ? "bg-white/20 text-white font-bold" : "text-white/40 hover:text-white")}>
-                            <Home className="w-4 h-4" /> Choose Home
+                        <button type="button" onClick={() => setEndMode('station')} className={cn("flex-1 py-2 text-xs rounded-md transition-all flex items-center justify-center gap-1", endMode === 'station' ? "bg-white/20 text-white font-bold" : "text-white/40 hover:text-white")}>
+                            <Train className="w-3 h-3" /> Station
+                        </button>
+                        <button type="button" onClick={() => setEndMode('custom')} className={cn("flex-1 py-2 text-xs rounded-md transition-all flex items-center justify-center gap-1", endMode === 'custom' ? "bg-white/20 text-white font-bold" : "text-white/40 hover:text-white")}>
+                            <MapPin className="w-3 h-3" /> Address
                         </button>
                     </div>
 
@@ -287,6 +385,35 @@ export function JoinRoundForm({ roundId, onJoin }: JoinRoundFormProps) {
                                             <p className="text-white text-sm font-medium">{s.name}</p>
                                         </div>
                                     ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {endMode === 'custom' && (
+                        <div className="relative space-y-2">
+                            {!selectedCustomEnd ? (
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Return Address..."
+                                        value={customEndQuery}
+                                        onChange={(e) => setCustomEndQuery(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleGeocodeEnd())}
+                                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pint-gold"
+                                        autoFocus
+                                    />
+                                    <Button type="button" onClick={handleGeocodeEnd} disabled={!customEndQuery || status === 'locating'} variant="secondary">
+                                        Search
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="bg-white/10 border border-white/20 p-3 rounded-xl flex justify-between items-center">
+                                    <div className="text-left">
+                                        <p className="text-white font-bold text-sm truncate max-w-[200px]">{selectedCustomEnd.address}</p>
+                                        <p className="text-white/40 text-xs">Custom Return</p>
+                                    </div>
+                                    <button type="button" onClick={() => { setSelectedCustomEnd(null); setCustomEndQuery(''); }} className="text-white/60 hover:text-white">✕</button>
                                 </div>
                             )}
                         </div>
