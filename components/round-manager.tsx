@@ -248,7 +248,11 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
 
                     /* 2. JOIN FORM */
                     !joined ? (
-                        <JoinRoundForm roundId={roundId} onJoin={() => window.location.reload()} />
+                        <JoinRoundForm
+                            roundId={roundId}
+                            onJoin={() => window.location.reload()}
+                            existingMembers={uniqueMembers}
+                        />
                     ) :
 
                         /* 3. PUB VOTING VIEW */

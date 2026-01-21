@@ -12,14 +12,16 @@ import { MapPicker } from '@/components/map-picker'
 
 interface JoinRoundFormProps {
     roundId: string // UUID from DB
+    existingMembers?: any[] // New Prop
     onJoin: () => void
 }
 
-export function JoinRoundForm({ roundId, onJoin }: JoinRoundFormProps) {
+export function JoinRoundForm({ roundId, existingMembers = [], onJoin }: JoinRoundFormProps) {
     const [name, setName] = useState('')
     const [photoBlob, setPhotoBlob] = useState<Blob | null>(null)
     const [status, setStatus] = useState<'idle' | 'locating' | 'uploading'>('idle')
     const [skipSelfie, setSkipSelfie] = useState(false)
+    const [isClaiming, setIsClaiming] = useState(false) // New state for 'Already Joined' mode
 
     // Location State
     const [startMode, setStartMode] = useState<'live' | 'station' | 'custom'>('live')
@@ -157,6 +159,15 @@ export function JoinRoundForm({ roundId, onJoin }: JoinRoundFormProps) {
         )
     }
 
+    // New Claim Logic
+    const handleClaimMember = (member: any) => {
+        if (confirm(`Re-join as ${member.name}?`)) {
+            localStorage.setItem(`fair-round-member-id-${roundId}`, member.id)
+            localStorage.setItem(`fair-round-joined-${roundId}`, 'true')
+            onJoin()
+        }
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!name) return
@@ -237,6 +248,42 @@ export function JoinRoundForm({ roundId, onJoin }: JoinRoundFormProps) {
         } finally {
             setStatus('idle')
         }
+    }
+
+    // Render Claim UI
+    if (isClaiming) {
+        return (
+            <div className="flex flex-col items-center gap-6 w-full max-w-sm animate-fade-in-up delay-100 pb-20">
+                <h2 className="text-2xl font-bold text-white">Who are you?</h2>
+                <div className="grid grid-cols-2 gap-4 w-full">
+                    {existingMembers.map(m => (
+                        <button
+                            key={m.id}
+                            onClick={() => handleClaimMember(m)}
+                            className="flex flex-col items-center gap-2 p-4 bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/10 hover:border-pint-gold"
+                        >
+                            <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-fairness-green/50 bg-white/10 flex items-center justify-center">
+                                {m.photo_path ? (
+                                    /* eslint-disable-next-line @next/next/no-img-element */
+                                    <img
+                                        src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/temporary_selfies/${m.photo_path}`}
+                                        alt={m.name}
+                                        className="w-full h-full object-cover transform scale-x-[-1]"
+                                    />
+                                ) : (
+                                    <span className="text-xl font-bold text-white/50">{m.name.charAt(0).toUpperCase()}</span>
+                                )}
+                            </div>
+                            <span className="text-white font-medium truncate w-full text-center">{m.name}</span>
+                        </button>
+                    ))}
+                    {existingMembers.length === 0 && <p className="text-white/40 col-span-2 text-center">No members found.</p>}
+                </div>
+                <Button variant="ghost" className="text-white/40 hover:text-white" onClick={() => setIsClaiming(false)}>
+                    ← Back to Join
+                </Button>
+            </div>
+        )
     }
 
     return (
@@ -479,6 +526,12 @@ export function JoinRoundForm({ roundId, onJoin }: JoinRoundFormProps) {
                 >
                     {status === 'uploading' ? 'Joining...' : 'Ready to Start'}
                 </Button>
+
+                {existingMembers.length > 0 && (
+                    <button type="button" onClick={() => setIsClaiming(true)} className="text-sm text-pint-gold hover:underline mt-2">
+                        Already in this party? Re-join here.
+                    </button>
+                )}
             </div>
         </form>
     )
