@@ -83,7 +83,8 @@ export const maps = {
             console.error("Reverse Geocode Error", error);
             return "London Area";
         }
-    }
+    },
+
     // Get Place Details (Summary & Reviews)
     getPlaceDetails: async (placeId: string) => {
         if (!key) return null;
