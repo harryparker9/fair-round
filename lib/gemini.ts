@@ -26,8 +26,8 @@ export const gemini = {
             return response.text().trim();
         } catch (error: any) {
             console.error("Gemini Error:", error);
-            // Fallback if AI quota is exceeded or fails
-            return `A highly rated local favorite with a ${rating} star rating.`;
+            // Fallback: Expose error for debugging
+            return `AI Error: ${error.message || "Unknown Error"}`;
         }
     },
 
