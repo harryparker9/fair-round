@@ -132,3 +132,33 @@ export async function endRound(roundId: string) {
     if (error) throw error
     return { success: true }
 }
+
+// 6. Host Reverts Stage (Go Back)
+export async function regressStage(roundId: string, currentStage: string) {
+    const db = supabaseAdmin || supabase;
+
+    let targetStage = 'lobby';
+    let updates: any = {};
+
+    if (currentStage === 'results') {
+        targetStage = 'pub_voting';
+        updates = { settings: null }; // Clear winning pub
+    } else if (currentStage === 'pub_voting') {
+        targetStage = 'voting';
+        // Keep areas, just re-vote
+    } else if (currentStage === 'voting') {
+        targetStage = 'lobby';
+        updates = { area_options: [] }; // Clear options to force re-calculation
+    }
+
+    const { error } = await db
+        .from('rounds')
+        .update({
+            stage: targetStage,
+            ...updates
+        })
+        .eq('id', roundId)
+
+    if (error) throw error
+    return { success: true, targetStage }
+}

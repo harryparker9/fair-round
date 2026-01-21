@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { ResultsView } from '@/components/results-view'
 import { PubRecommendation, AreaOption } from '@/types'
 import { supabase } from '@/lib/supabase'
-import { startAreaVoting, endRound } from '@/actions/voting'
+import { startAreaVoting, endRound, regressStage } from '@/actions/voting'
 import { AreaVotingView } from '@/components/area-voting-view'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
@@ -219,16 +219,34 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                     {isHost && <span className="text-[10px] bg-pint-gold/20 text-pint-gold px-2 py-0.5 rounded font-bold border border-pint-gold/30">HOST</span>}
                 </div>
 
-                {/* Right: Exit */}
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleExit}
-                    className="text-white/60 hover:text-red-400 hover:bg-red-900/20 p-2"
-                >
-                    <LogOut className="w-5 h-5" />
-                    <span className="sr-only">Exit</span>
-                </Button>
+                {/* Right: Host Controls & Exit */}
+                <div className="flex items-center gap-2">
+                    {isHost && stage !== 'lobby' && (
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={async () => {
+                                if (confirm("Go back to previous stage? This might reset some progress.")) {
+                                    // @ts-ignore
+                                    await regressStage(roundId, stage)
+                                    // Subscription will handle state update
+                                }
+                            }}
+                            className="text-xs h-8 bg-pint-gold/10 text-pint-gold border border-pint-gold/30 hover:bg-pint-gold/20"
+                        >
+                            ← Go Back
+                        </Button>
+                    )}
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleExit}
+                        className="text-white/60 hover:text-red-400 hover:bg-red-900/20 p-2"
+                    >
+                        <LogOut className="w-5 h-5" />
+                        <span className="sr-only">Exit</span>
+                    </Button>
+                </div>
             </div>
 
             <div className="mt-20 w-full max-w-md p-4 space-y-8 animate-fade-in-up flex flex-col items-center pb-20">
