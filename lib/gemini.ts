@@ -1,12 +1,15 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || "";
+const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_GENERATIVE_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
 const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // Use stable 1.5 Flash
 
 export const gemini = {
     generateVibeCheck: async (pubName: string, vicinity: string, rating: number, preferences: string[] = []) => {
-        if (!apiKey) return "AI Vibe check unavailable (Missing Key).";
+        if (!apiKey) {
+            console.error("Gemini API Key missing. Checked: GOOGLE_GENERATIVE_AI_API_KEY, GOOGLE_GENERATIVE_API_KEY, GEMINI_API_KEY, GOOGLE_API_KEY");
+            return "AI Vibe check unavailable (System Config Error - Missing API Key).";
+        }
 
         const prompt = `
       You are a high-end London pub curator. 
