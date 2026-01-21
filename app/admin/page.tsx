@@ -82,8 +82,13 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 <p className="text-white/60 mb-8 max-w-md">
                     Access to this page is restricted. Please ensure you have the correct administrative secret in the URL.
                 </p>
-                <div className="text-xs text-white/20 font-mono bg-black/20 px-4 py-2 rounded">
-                    Error: INVALID_SECRET
+                <div className="text-left text-xs text-white/40 font-mono bg-black/20 p-4 rounded space-y-2">
+                    <div>Error: INVALID_SECRET</div>
+                    <div className="w-full h-px bg-white/10 my-2"></div>
+                    <div><strong>Debug Info:</strong></div>
+                    <div>URL Parameter: "{secret}" (Length: {secret?.length || 0})</div>
+                    <div>Env Var (ADMIN_SECRET): {process.env.ADMIN_SECRET ? `"***${process.env.ADMIN_SECRET.slice(-4)}"` : "UNDEFINED"} (Length: {process.env.ADMIN_SECRET?.length || 0})</div>
+                    <div>Validation: {secret === process.env.ADMIN_SECRET ? "MATCH" : "MISMATCH"}</div>
                 </div>
             </div>
         )
