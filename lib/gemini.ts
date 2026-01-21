@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_GENERATIVE_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
 const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // Use stable 1.5 Flash
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" }); // Use explicit version
 
 export const gemini = {
     generateVibeCheck: async (pubName: string, vicinity: string, rating: number, preferences: string[] = []) => {
