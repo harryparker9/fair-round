@@ -222,61 +222,62 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
                                             ))}
                                         </div>
                                     </div>
+                                </div>
                             )}
-                                </motion.div>
-                            )
+                        </motion.div>
+                    )
+                })}
+            </div>
+
+            {
+                isHost && (
+                    <div className="fixed bottom-6 left-0 right-0 p-4 flex flex-col items-center gap-3 z-50">
+
+                        {/* Filter Toggles */}
+                        <div className="flex gap-2 bg-charcoal/90 backdrop-blur border border-white/10 p-1.5 rounded-full shadow-lg">
+                            {['garden', 'food', 'sports'].map(f => {
+                                const isActive = filters.includes(f)
+                                return (
+                                    <button
+                                        key={f}
+                                        onClick={() => toggleFilter(f)}
+                                        className={cn(
+                                            "px-3 py-1 rounded-full text-xs font-bold transition-all border",
+                                            isActive
+                                                ? "bg-fairness-green text-black border-fairness-green"
+                                                : "bg-transparent text-white/50 border-transparent hover:bg-white/10"
+                                        )}
+                                    >
+                                        {f === 'garden' && '🌳 '}
+                                        {f === 'food' && '🍔 '}
+                                        {f === 'sports' && '⚽ '}
+                                        {f.charAt(0).toUpperCase() + f.slice(1)}
+                                    </button>
+                                )
                             })}
                         </div>
 
-            {
-                        isHost && (
-                            <div className="fixed bottom-6 left-0 right-0 p-4 flex flex-col items-center gap-3 z-50">
-
-                                {/* Filter Toggles */}
-                                <div className="flex gap-2 bg-charcoal/90 backdrop-blur border border-white/10 p-1.5 rounded-full shadow-lg">
-                                    {['garden', 'food', 'sports'].map(f => {
-                                        const isActive = filters.includes(f)
-                                        return (
-                                            <button
-                                                key={f}
-                                                onClick={() => toggleFilter(f)}
-                                                className={cn(
-                                                    "px-3 py-1 rounded-full text-xs font-bold transition-all border",
-                                                    isActive
-                                                        ? "bg-fairness-green text-black border-fairness-green"
-                                                        : "bg-transparent text-white/50 border-transparent hover:bg-white/10"
-                                                )}
-                                            >
-                                                {f === 'garden' && '🌳 '}
-                                                {f === 'food' && '🍔 '}
-                                                {f === 'sports' && '⚽ '}
-                                                {f.charAt(0).toUpperCase() + f.slice(1)}
-                                            </button>
-                                        )
-                                    })}
-                                </div>
-
-                                <div className="glass-panel px-6 py-4 rounded-full flex items-center gap-4 shadow-2xl backdrop-blur-2xl border border-pint-gold/20">
-                                    <div className="text-right">
-                                        <p className="text-xs text-white/40 uppercase">Winning Area</p>
-                                        <p className="text-sm font-bold text-white max-w-[150px] truncate">{currentLeader?.name || "None"}</p>
-                                    </div>
-                                    <Button
-                                        variant="primary"
-                                        onClick={() => handleFinalize(currentLeader?.id || options[0].id)}
-                                        disabled={isFinalizing || !currentLeader}
-                                        className="shadow-[0_0_20px_rgba(255,215,0,0.3)] animate-pulse"
-                                    >
-                                        {isFinalizing ? "Finding Pubs..." : "Lock In & Find Pubs"}
-                                    </Button>
-                                </div>
+                        <div className="glass-panel px-6 py-4 rounded-full flex items-center gap-4 shadow-2xl backdrop-blur-2xl border border-pint-gold/20">
+                            <div className="text-right">
+                                <p className="text-xs text-white/40 uppercase">Winning Area</p>
+                                <p className="text-sm font-bold text-white max-w-[150px] truncate">{currentLeader?.name || "None"}</p>
                             </div>
-                        )
-                    }
-
-                    <div className="text-center text-[10px] text-white/20 pb-4">
-                        You are: {members.find(m => m.id === currentUserMemberId)?.name || "Unknown"} ({currentUserMemberId})
+                            <Button
+                                variant="primary"
+                                onClick={() => handleFinalize(currentLeader?.id || options[0].id)}
+                                disabled={isFinalizing || !currentLeader}
+                                className="shadow-[0_0_20px_rgba(255,215,0,0.3)] animate-pulse"
+                            >
+                                {isFinalizing ? "Finding Pubs..." : "Lock In & Find Pubs"}
+                            </Button>
+                        </div>
                     </div>
+                )
+            }
+
+            <div className="text-center text-[10px] text-white/20 pb-4">
+                You are: {members.find(m => m.id === currentUserMemberId)?.name || "Unknown"} ({currentUserMemberId})
+            </div>
         </div>
-            )
+    )
 }
