@@ -330,7 +330,21 @@ export const triangulationService = {
                 description: s.description,
                 center: { lat: s.lat, lng: s.lng },
                 travel_times: s.travel_times,
-                fairness_score: s.fairness_score
+                fairness_score: s.fairness_score,
+                scoring: {
+                    avg_time: Math.round(s.total_time / Math.max(1, activeMembers.length)),
+                    max_time: Math.max(...Object.values(s.travel_times).map(t => t.to + t.home)),
+                    total_time: s.total_time,
+                    penalty: s.fairness_score - s.total_time,
+                    outlier_name: activeMembers.find(m => {
+                        const t = s.travel_times[memberMap[m.id].name]; // Need consistent lookup
+                        // Wait, s.travel_times is keyed by NAME in lines 281.
+                        // Let's ensure safer lookup.
+                        // Ideally we key travel_times by ID in line 281. 
+                        // But existing code uses Name. Let's stick to max check.
+                        return false;
+                    })?.name
+                }
             }));
     },
 

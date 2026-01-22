@@ -155,99 +155,128 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
                                         onClick={() => setExpandedAreaId(isExpanded ? null : area.id)}
                                         className="px-3 py-2 text-xs text-white/40 hover:text-white border border-white/10 rounded-lg transition-colors"
                                     >
-                                        {isExpanded ? "Hide Infos" : "See Travel Times"}
+                                        {isExpanded ? "Hide Details" : "Why this station?"}
                                     </button>
                                 </div>
                             </div>
 
                             {/* Detailed Travel Times Dropdown */}
                             {isExpanded && (
-                                <div className="bg-black/40 p-4 border-t border-white/5 space-y-2">
-                                    <h4 className="text-xs font-bold text-white/40 uppercase mb-2">Estimated Travel Times</h4>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {Object.entries(area.travel_times).map(([memberName, time]) => (
-                                            <div key={memberName} className="flex justify-between items-center bg-white/5 px-2 py-1 rounded">
-                                                <span className="text-xs text-white/80">{memberName}</span>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="flex flex-col items-end leading-none">
-                                                        <span className={cn(
-                                                            "text-xs font-mono",
-                                                            time.to > 45 ? "text-red-400" : "text-fairness-green"
-                                                        )}>
-                                                            {time.to}m
-                                                        </span>
-                                                        <span className="text-[10px] text-white/30">
-                                                            Ret: {time.home}m
-                                                        </span>
-                                                    </div>
-                                                    {/* Link to Google Maps to verify route */}
-                                                    <a
-                                                        href={`https://www.google.com/maps/dir/?api=1&destination=${area.center.lat},${area.center.lng}&travelmode=transit`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-[10px] text-white/30 hover:text-pint-gold"
-                                                        title="View Route"
-                                                    >
-                                                        ↗
-                                                    </a>
+                                <div className="bg-black/40 p-4 border-t border-white/5 space-y-4 animate-in slide-in-from-top-2">
+
+                                    {/* Methodology / Transparency */}
+                                    {area.scoring && (
+                                        <div className="bg-white/5 p-3 rounded-lg border border-white/5 space-y-2">
+                                            <h4 className="text-xs font-bold text-pint-gold uppercase tracking-wider">Veracity Check</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <p className="text-[10px] text-white/40 uppercase">Avg Commute</p>
+                                                    <p className="text-lg font-mono text-white">{area.scoring.avg_time}m</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] text-white/40 uppercase">Longest Trip</p>
+                                                    <p className="text-lg font-mono text-white">
+                                                        {area.scoring.max_time}m
+                                                        <span className="text-xs text-white/50 ml-1">({area.scoring.outlier_name})</span>
+                                                    </p>
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </motion.div>
-                    )
-                })}
-            </div>
-
-            {isHost && (
-                <div className="fixed bottom-6 left-0 right-0 p-4 flex flex-col items-center gap-3 z-50">
-
-                    {/* Filter Toggles */}
-                    <div className="flex gap-2 bg-charcoal/90 backdrop-blur border border-white/10 p-1.5 rounded-full shadow-lg">
-                        {['garden', 'food', 'sports'].map(f => {
-                            const isActive = filters.includes(f)
-                            return (
-                                <button
-                                    key={f}
-                                    onClick={() => toggleFilter(f)}
-                                    className={cn(
-                                        "px-3 py-1 rounded-full text-xs font-bold transition-all border",
-                                        isActive
-                                            ? "bg-fairness-green text-black border-fairness-green"
-                                            : "bg-transparent text-white/50 border-transparent hover:bg-white/10"
+                                            {area.scoring.penalty > 0 && (
+                                                <div className="text-xs text-red-300 bg-red-900/20 p-2 rounded">
+                                                    ⚠️ Penalized because {area.scoring.outlier_name} travels &gt;90mins.
+                                                </div>
+                                            )}
+                                        </div>
                                     )}
-                                >
-                                    {f === 'garden' && '🌳 '}
-                                    {f === 'food' && '🍔 '}
-                                    {f === 'sports' && '⚽ '}
-                                    {f.charAt(0).toUpperCase() + f.slice(1)}
-                                </button>
+
+                                    <div className="space-y-2">
+                                        <h4 className="text-xs font-bold text-white/40 uppercase">Full Breakdown</h4>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {Object.entries(area.travel_times).map(([memberName, time]) => (
+                                                <div key={memberName} className="flex justify-between items-center bg-white/5 px-2 py-1 rounded">
+                                                    <span className="text-xs text-white/80">{memberName}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="flex flex-col items-end leading-none">
+                                                            <span className={cn(
+                                                                "text-xs font-mono",
+                                                                time.to > 45 ? "text-red-400" : "text-fairness-green"
+                                                            )}>
+                                                                {time.to}m
+                                                            </span>
+                                                            <span className="text-[10px] text-white/30">
+                                                                Ret: {time.home}m
+                                                            </span>
+                                                        </div>
+                                                        {/* Link to Google Maps to verify route */}
+                                                        <a
+                                                            href={`https://www.google.com/maps/dir/?api=1&destination=${area.center.lat},${area.center.lng}&travelmode=transit`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-[10px] text-white/30 hover:text-pint-gold"
+                                                            title="View Route"
+                                                        >
+                                                            ↗
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                            )}
+                                </motion.div>
                             )
-                        })}
-                    </div>
-
-                    <div className="glass-panel px-6 py-4 rounded-full flex items-center gap-4 shadow-2xl backdrop-blur-2xl border border-pint-gold/20">
-                        <div className="text-right">
-                            <p className="text-xs text-white/40 uppercase">Winning Area</p>
-                            <p className="text-sm font-bold text-white max-w-[150px] truncate">{currentLeader?.name || "None"}</p>
+                            })}
                         </div>
-                        <Button
-                            variant="primary"
-                            onClick={() => handleFinalize(currentLeader?.id || options[0].id)}
-                            disabled={isFinalizing || !currentLeader}
-                            className="shadow-[0_0_20px_rgba(255,215,0,0.3)] animate-pulse"
-                        >
-                            {isFinalizing ? "Finding Pubs..." : "Lock In & Find Pubs"}
-                        </Button>
-                    </div>
-                </div>
-            )}
 
-            <div className="text-center text-[10px] text-white/20 pb-4">
-                You are: {members.find(m => m.id === currentUserMemberId)?.name || "Unknown"} ({currentUserMemberId})
-            </div>
+            {
+                        isHost && (
+                            <div className="fixed bottom-6 left-0 right-0 p-4 flex flex-col items-center gap-3 z-50">
+
+                                {/* Filter Toggles */}
+                                <div className="flex gap-2 bg-charcoal/90 backdrop-blur border border-white/10 p-1.5 rounded-full shadow-lg">
+                                    {['garden', 'food', 'sports'].map(f => {
+                                        const isActive = filters.includes(f)
+                                        return (
+                                            <button
+                                                key={f}
+                                                onClick={() => toggleFilter(f)}
+                                                className={cn(
+                                                    "px-3 py-1 rounded-full text-xs font-bold transition-all border",
+                                                    isActive
+                                                        ? "bg-fairness-green text-black border-fairness-green"
+                                                        : "bg-transparent text-white/50 border-transparent hover:bg-white/10"
+                                                )}
+                                            >
+                                                {f === 'garden' && '🌳 '}
+                                                {f === 'food' && '🍔 '}
+                                                {f === 'sports' && '⚽ '}
+                                                {f.charAt(0).toUpperCase() + f.slice(1)}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+
+                                <div className="glass-panel px-6 py-4 rounded-full flex items-center gap-4 shadow-2xl backdrop-blur-2xl border border-pint-gold/20">
+                                    <div className="text-right">
+                                        <p className="text-xs text-white/40 uppercase">Winning Area</p>
+                                        <p className="text-sm font-bold text-white max-w-[150px] truncate">{currentLeader?.name || "None"}</p>
+                                    </div>
+                                    <Button
+                                        variant="primary"
+                                        onClick={() => handleFinalize(currentLeader?.id || options[0].id)}
+                                        disabled={isFinalizing || !currentLeader}
+                                        className="shadow-[0_0_20px_rgba(255,215,0,0.3)] animate-pulse"
+                                    >
+                                        {isFinalizing ? "Finding Pubs..." : "Lock In & Find Pubs"}
+                                    </Button>
+                                </div>
+                            </div>
+                        )
+                    }
+
+                    <div className="text-center text-[10px] text-white/20 pb-4">
+                        You are: {members.find(m => m.id === currentUserMemberId)?.name || "Unknown"} ({currentUserMemberId})
+                    </div>
         </div>
-    )
+            )
 }

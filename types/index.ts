@@ -9,6 +9,13 @@ export interface AreaOption {
     description: string
     center: { lat: number, lng: number }
     travel_times: Record<string, { to: number; home: number }> // member_id -> { to: mins, home: mins }
+    scoring?: {
+        avg_time: number
+        max_time: number
+        outlier_name?: string
+        penalty: number
+        total_time: number
+    }
 }
 
 export interface Round {
