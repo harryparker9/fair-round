@@ -26,7 +26,7 @@ export function CreateRoundCard() {
     const [joinCode, setJoinCode] = useState('')
     const [joinError, setJoinError] = useState<string | null>(null) // Error state
 
-    const handleCreateRound = async () => {
+    const handleCreateRound = async (meetingTime?: string) => {
         setLoading(true)
         const code = generateCode()
 
@@ -45,7 +45,10 @@ export function CreateRoundCard() {
                     code,
                     host_id: userId, // Set the creator as host
                     status: 'active',
-                    settings: { mode: 'optimized' }
+                    settings: {
+                        mode: 'optimized',
+                        meeting_time: meetingTime || new Date().toISOString()
+                    }
                 }
             ])
             .select()
@@ -121,10 +124,26 @@ export function CreateRoundCard() {
                 {activeTab === 'create' ? (
                     <div className="space-y-4 animate-fade-in">
                         <p className="text-sm text-white/40">Start a fresh round and invite friends.</p>
+
+                        {/* Meeting Time Picker */}
+                        <div className="text-left space-y-1.5">
+                            <label className="text-xs text-white/50 uppercase tracking-widest font-bold ml-1">Meeting Time</label>
+                            <input
+                                type="datetime-local"
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 text-sm focus:outline-none focus:ring-2 focus:ring-pint-gold transition-all"
+                                defaultValue={new Date(new Date().setMinutes(new Date().getMinutes() - new Date().getTimezoneOffset())).toISOString().slice(0, 16)}
+                                id="meeting-time"
+                            />
+                            <p className="text-[10px] text-white/30 ml-1">We'll check delays for this time.</p>
+                        </div>
+
                         <Button
                             variant="primary"
                             size="lg"
-                            onClick={handleCreateRound}
+                            onClick={() => {
+                                const el = document.getElementById('meeting-time') as HTMLInputElement;
+                                handleCreateRound(el?.value);
+                            }}
                             disabled={loading}
                             className="w-full text-lg shadow-[0_0_20px_rgba(255,215,0,0.4)]"
                         >

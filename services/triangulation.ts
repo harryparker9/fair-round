@@ -193,8 +193,168 @@ export const triangulationService = {
         }));
     },
 
-    // 2. MAIN: Find Best Stations (The "Station-First" Logical Core)
-    findBestStations: async (members: PartyMember[]): Promise<any[]> => {
+    // 2. MAIN: AI Scout -> Reality -> Judge Pipeline
+    findBestStations: async (members: PartyMember[], meetingTime?: string): Promise<any[]> => {
+        console.log("Starting AI Triangulation...");
+
+        // A. Resolve Locations
+        const resolvedMembers = await Promise.all(members.map(async (m) => {
+            let startLoc = m.location;
+            let endLoc = m.location;
+            let startName = 'Unknown';
+            let endName = 'Same';
+
+            if (m.start_location_type === 'station' && m.start_station_id) {
+                const { data: s } = await supabase.from('stations').select('*').eq('id', m.start_station_id).single()
+                if (s) { startLoc = { lat: s.lat, lng: s.lng }; startName = s.name; }
+            } else if (m.start_location_type === 'live' || m.start_location_type === 'custom') {
+                startName = m.location?.address || `Pin (${m.location?.lat.toFixed(2)})`;
+            }
+
+            if (m.end_location_type === 'station' && m.end_station_id) {
+                const { data: s } = await supabase.from('stations').select('*').eq('id', m.end_station_id).single()
+                if (s) { endLoc = { lat: s.lat, lng: s.lng }; endName = s.name; }
+            } else if (m.end_location_type === 'custom') {
+                endLoc = { lat: m.end_lat!, lng: m.end_lng! }; endName = 'Custom Return';
+            } else {
+                endLoc = startLoc;
+            }
+
+            return { ...m, location: startLoc, endLocation: endLoc, startName, endName }
+        }));
+
+        const activeMembers = resolvedMembers.filter(m => m.status === 'ready' && m.location);
+        if (activeMembers.length === 0) return [];
+
+        // B. Context Building
+        const context = activeMembers.map(m =>
+            `- ${m.name}: Starts at ${m.startName}, Ends at ${m.endName}`
+        ).join('\n');
+
+        // C. SCOUT (Gemini)
+        let candidates: any[] = [];
+        try {
+            console.log("Scouting stations...");
+            const suggestions = await gemini.scoutStations(context, meetingTime || "Now");
+            console.log("AI Suggestions:", suggestions);
+
+            if (suggestions.length > 0) {
+                // Fetch ALL stations to do robust matching
+                const { data: allStations } = await supabase.from('stations').select('*');
+
+                if (allStations) {
+                    candidates = suggestions.map(sName => {
+                        // Fuzzy match name
+                        const normalize = (s: string) => s.toLowerCase().replace(' station', '').trim();
+                        const target = normalize(sName);
+                        // Find match
+                        const match = allStations.find(dbS => normalize(dbS.name).includes(target) || target.includes(normalize(dbS.name)));
+                        return match;
+                    }).filter(Boolean); // Remove nulls
+                }
+            }
+        } catch (e) {
+            console.error("AI Scout Failed:", e);
+        }
+
+        // FALLBACK: If AI returned nothing valid (or failed), use Math Shortlist
+        if (candidates.length < 3) {
+            console.log("AI Scout yielded too few results. Fallback to Math.");
+            // We invoke the math version but we need to ensure the types match 
+            // findBestStationsMath returns the formatted FINAL object, whereas we are in the middle of processing.
+            // Actually, findBestStationsMath returns Promise<any[]> (the final result).
+            // So we can just return it directly!
+            return triangulationService.findBestStationsMath(members);
+        }
+
+        // D. REALITY CHECK (TfL Race)
+        const scoredStations = await Promise.all(candidates.slice(0, 10).map(async (station) => {
+            let totalTime = 0;
+            let maxTotalTime = 0;
+            const travelTimes: Record<string, { to: number, home: number }> = {};
+
+            const journeyPromises = activeMembers.map(async (member) => {
+                const durationTo = await transportService.getJourneyDuration(member.location!, { lat: station.lat, lng: station.lng });
+
+                // Estimate Return
+                let durationHome = durationTo;
+                // If end location is significantly different
+                if (member.endLocation && (Math.abs(member.location!.lat - member.endLocation.lat) > 0.001 || Math.abs(member.location!.lng - member.endLocation.lng) > 0.001)) {
+                    durationHome = await transportService.getJourneyDuration({ lat: station.lat, lng: station.lng }, member.endLocation) || durationTo;
+                }
+
+                return {
+                    id: member.id,
+                    name: member.name,
+                    to: durationTo || 0,
+                    home: durationHome || 0
+                };
+            });
+
+            const results = await Promise.all(journeyPromises);
+
+            results.forEach(res => {
+                travelTimes[res.name] = { to: res.to, home: res.home };
+                const personTotal = res.to + res.home;
+                totalTime += personTotal;
+                if (personTotal > maxTotalTime) maxTotalTime = personTotal;
+            });
+
+            // Math Score (Lower is better)
+            let score = totalTime;
+            if (maxTotalTime > 90) score += (maxTotalTime - 90) * 10; // Heavy penalty for stragglers
+
+            return {
+                id: station.id,
+                name: station.name,
+                description: `Zone ${station.zone || '?'} • ${station.lines?.[0] || 'Transport'}`,
+                lat: station.lat,
+                lng: station.lng,
+                travel_times: travelTimes,
+                fairness_score: score,
+                total_time: totalTime
+            };
+        }));
+
+        const validScored = scoredStations.filter(s => s.total_time > 0).sort((a, b) => a.fairness_score - b.fairness_score);
+
+        // E. JUDGE (Gemini)
+        const topCandidates = validScored.slice(0, 5);
+        let aiverdict = null;
+        try {
+            console.log("Judging top candidates...");
+            aiverdict = await gemini.judgeStations(topCandidates, context);
+            console.log("AI Verdict:", aiverdict);
+        } catch (e) {
+            console.error("AI Judge Failed:", e);
+        }
+
+        // F. FORMAT FINAL RESULT
+        return topCandidates.slice(0, 3).map(s => {
+            const isWinner = aiverdict && s.name === aiverdict.winner_name;
+            const rationale = isWinner ? aiverdict.rationale : (aiverdict?.rankings?.includes(s.name) ? "Strategic option." : "Good alternatives.");
+
+            return {
+                id: s.id,
+                name: s.name,
+                description: s.description,
+                center: { lat: s.lat, lng: s.lng },
+                travel_times: s.travel_times,
+                fairness_score: s.fairness_score,
+                ai_rationale: rationale,
+                scoring: {
+                    avg_time: Math.round(s.total_time / Math.max(1, activeMembers.length)),
+                    max_time: Math.max(...Object.values(s.travel_times).map(t => t.to + t.home)),
+                    total_time: s.total_time,
+                    penalty: s.fairness_score - s.total_time,
+                    outlier_name: Object.entries(s.travel_times).sort((a, b) => (b[1].to + b[1].home) - (a[1].to + a[1].home))[0]?.[0]
+                }
+            };
+        });
+    },
+
+    // 2. MATH FALLBACK: Find Best Stations (The "Station-First" Logical Core)
+    findBestStationsMath: async (members: PartyMember[]): Promise<any[]> => {
         // Resolve Locations (Start AND End)
         const resolvedMembers = await Promise.all(members.map(async (m) => {
             let startLoc = m.location;

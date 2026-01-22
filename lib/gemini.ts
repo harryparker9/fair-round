@@ -70,5 +70,87 @@ export const gemini = {
             console.error("Gemini Area Error:", error);
             return [];
         }
+    },
+    // 3. SCOUT: Generate Strategic Candidates
+    scoutStations: async (context: string, meetingTime: string): Promise<string[]> => {
+        if (!apiKey) return [];
+
+        const prompt = `
+        You are the Fairness Engine for a London meetup app.
+        OBJECTIVE: Select the top 12 strategic London Train Station candidates for a group meeting.
+
+        CONTEXT:
+        ${context}
+        Meeting Time: ${meetingTime}
+
+        STRATEGY:
+        1. Identify the "Fair Middle" (Geometric center).
+        2. Identify "Strategic Hubs" (Bank, Waterloo, King's Cross, Victoria, etc.) that serve the group's lines.
+        3. Prioritize Minimal Changes: If 2 people are on the Northern Line, picking a Northern Line station is better than the geometric center.
+        4. Prioritize "Detour Minimization": If people are ending at X, and X is on the way for others, suggest X.
+        
+        OUTPUT:
+        Return ONLY a JSON array of strings (Station Names). Do not include "Station" in the name unless part of it (e.g. "Waterloo", not "Waterloo Station").
+        Example: ["Bank", "Waterloo", "Angel", "London Bridge"]
+        `;
+
+        try {
+            const result = await model.generateContent(prompt);
+            const text = result.response.text();
+            const jsonMatch = text.match(/\[[\s\S]*\]/);
+            if (!jsonMatch) return [];
+            return JSON.parse(jsonMatch[0]);
+        } catch (error) {
+            console.error("Gemini Scout Error:", error);
+            return [];
+        }
+    },
+
+    // 4. JUDGE: Pick the Winner
+    judgeStations: async (candidates: any[], context: string): Promise<any> => {
+        if (!apiKey) return null;
+
+        // Simplify candidates for token limit
+        const simpleCandidates = candidates.map(c => ({
+            name: c.name,
+            total_time: c.total_time,
+            max_trip: Math.max(...Object.values(c.travel_times).map((t: any) => t.to + t.home)),
+            // We can add lines/zone if we had them.
+            journeys: Object.entries(c.travel_times).map(([name, t]: [string, any]) => `${name}: ${Math.round(t.to)}m way`).join(', ')
+        }));
+
+        const prompt = `
+        You are the Final Judge for a London meetup.
+        OBJECTIVE: Rank these options and pick the single best winner.
+
+        CONTEXT:
+        ${context}
+
+        CANDIDATES (Real Travel Data):
+        ${JSON.stringify(simpleCandidates, null, 2)}
+
+        RULES:
+        1. Minimize Inefficiency: Total travel time matters, but avoiding 90m+ nightmares matters more.
+        2. "The Vibe": Direct lines are better than fast changes.
+        3. Explain WHY: Write a "Rationale" that explains the choice to the users.
+
+        OUTPUT JSON:
+        {
+            "winner_name": "Station Name",
+            "rationale": "One friendly, witty sentence explaining why. Mention specific people if relevant (e.g. 'Saved Harry a change').",
+            "rankings": ["Station A", "Station B", "Station C"]
+        }
+        `;
+
+        try {
+            const result = await model.generateContent(prompt);
+            const text = result.response.text();
+            const jsonMatch = text.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) return null;
+            return JSON.parse(jsonMatch[0]);
+        } catch (error) {
+            console.error("Gemini Judge Error:", error);
+            return null;
+        }
     }
 };

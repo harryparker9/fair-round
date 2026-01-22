@@ -9,6 +9,7 @@ export interface AreaOption {
     description: string
     center: { lat: number, lng: number }
     travel_times: Record<string, { to: number; home: number }> // member_id -> { to: mins, home: mins }
+    ai_rationale?: string
     scoring?: {
         avg_time: number
         max_time: number

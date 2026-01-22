@@ -16,8 +16,12 @@ export async function startAreaVoting(roundId: string) {
 
         if (!members || members.length === 0) throw new Error("No members found")
 
+        // Fetch round settings (for Meeting Time)
+        const { data: round } = await supabase.from('rounds').select('settings').eq('id', roundId).single()
+        const meetingTime = round?.settings?.meeting_time || undefined;
+
         // Generate Options (Gemini + Distance Matrix)
-        const options = await triangulationService.findBestStations(members)
+        const options = await triangulationService.findBestStations(members, meetingTime)
 
         // Update Round: save options and move to 'voting' stage
         const db = supabaseAdmin || supabase; // Prefer admin

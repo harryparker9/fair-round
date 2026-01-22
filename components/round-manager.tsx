@@ -11,7 +11,9 @@ import { AreaVotingView } from '@/components/area-voting-view'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { LogOut, Settings, Users, ChevronDown } from 'lucide-react'
-import { PartyMemberRoster } from '@/components/party-member-roster'
+
+
+import { MemberMapModal } from '@/components/member-map-modal'
 
 interface RoundManagerProps {
     roundId: string
@@ -27,7 +29,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
     const [loading, setLoading] = useState(true)
     const [recommendations, setRecommendations] = useState<PubRecommendation[] | null>(null)
     const [isEditingSettings, setIsEditingSettings] = useState(false)
-    const [isRosterOpen, setIsRosterOpen] = useState(false)
+    const [selectedMemberForMap, setSelectedMemberForMap] = useState<any | null>(null) // Show map for this member
 
     // Status States
     const [triangulating, setTriangulating] = useState(false)
@@ -44,7 +46,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
     const lastSystemMessage = useRef<string | null>(null)
 
     // Data Helpers
-    const [stationNames, setStationNames] = useState<Record<string, string>>({})
+    const [stationData, setStationData] = useState<Record<string, { name: string, lat: number, lng: number }>>({})
 
     // User Identity
     const [myMemberId, setMyMemberId] = useState<string | null>(null)
@@ -71,11 +73,11 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
 
         if (ids.size === 0) return
 
-        const { data } = await supabase.from('stations').select('id, name').in('id', Array.from(ids))
+        const { data } = await supabase.from('stations').select('id, name, lat, lng').in('id', Array.from(ids))
         if (data) {
-            const map: Record<string, string> = {}
-            data.forEach(s => map[s.id] = s.name)
-            setStationNames(prev => ({ ...prev, ...map }))
+            const map: Record<string, { name: string, lat: number, lng: number }> = {}
+            data.forEach(s => map[s.id] = { name: s.name, lat: s.lat, lng: s.lng })
+            setStationData(prev => ({ ...prev, ...map }))
         }
     }
 
@@ -266,17 +268,12 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                     <span className="text-pint-gold font-mono text-xl font-bold leading-none">{code}</span>
                 </div>
 
-                {/* Center: Roster Toggle */}
+                {/* Center: Member Count (Read Only) */}
                 <div className="absolute left-1/2 transform -translate-x-1/2 flex flex-col items-center">
-                    <button
-                        onClick={() => setIsRosterOpen(!isRosterOpen)}
-                        className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-full transition-all active:scale-95"
-                    >
+                    <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full">
                         <Users className="w-4 h-4 text-pint-gold" />
                         <span className="text-sm font-bold text-white">{uniqueMembers.length}</span>
-                        <ChevronDown className={cn("w-3 h-3 text-white/50 transition-transform", isRosterOpen && "rotate-180")} />
-                    </button>
-                    {isHost && <span className="text-[8px] tracking-widest text-pint-gold uppercase mt-1 opacity-60">HOST</span>}
+                    </div>
                 </div>
 
                 {/* Right: Host Controls & Exit */}
@@ -323,15 +320,11 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                 </div>
             </div>
 
-            {/* Roster Panel */}
-            <PartyMemberRoster
-                members={uniqueMembers}
-                isOpen={isRosterOpen}
-                onClose={() => setIsRosterOpen(false)}
-                isHost={isHost}
-                roundHostId={roundHostId}
-                currentStage={stage}
-                stationNames={stationNames}
+            <MemberMapModal
+                member={selectedMemberForMap}
+                isOpen={!!selectedMemberForMap}
+                onClose={() => setSelectedMemberForMap(null)}
+                stationData={stationData}
             />
 
             {/* System Message Toast */}
@@ -422,7 +415,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                                         // Resolve Start Text (Lobby Version)
                                                         let startText = 'Location Pending'
                                                         if (member.start_location_type === 'station') {
-                                                            startText = stationNames[member.start_station_id] || 'Station'
+                                                            startText = stationData[member.start_station_id]?.name || 'Station'
                                                         } else if (member.start_location_type === 'live' || member.start_location_type === 'custom') {
                                                             startText = member.location?.address || 'Pinned Location'
                                                             // Keep it short
@@ -432,13 +425,17 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                                         // Resolve End (if different)
                                                         let endText = null
                                                         if (member.end_location_type === 'station') {
-                                                            endText = stationNames[member.end_station_id] || 'Station'
+                                                            endText = stationData[member.end_station_id]?.name || 'Station'
                                                         } else if (member.end_location_type === 'custom') {
                                                             endText = 'Custom Return'
                                                         }
 
                                                         return (
-                                                            <div key={member.id} className="flex items-center gap-4 bg-white/5 p-3 rounded-xl border border-white/5 animate-pop-in">
+                                                            <div
+                                                                key={member.id}
+                                                                onClick={() => setSelectedMemberForMap(member)}
+                                                                className="flex items-center gap-4 bg-white/5 hover:bg-white/10 p-3 rounded-xl border border-white/5 hover:border-pint-gold/50 animate-pop-in cursor-pointer transition-all active:scale-95 group"
+                                                            >
                                                                 <div className="w-12 h-12 rounded-full overflow-hidden border border-white/20 relative bg-black/40 flex-shrink-0">
                                                                     {member.photo_path ? (
                                                                         /* eslint-disable-next-line @next/next/no-img-element */

@@ -164,6 +164,16 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
                             {isExpanded && (
                                 <div className="bg-black/40 p-4 border-t border-white/5 space-y-4 animate-in slide-in-from-top-2">
 
+                                    {/* AI Rationale */}
+                                    {area.ai_rationale && (
+                                        <div className="bg-pint-gold/10 border border-pint-gold/20 p-3 rounded-lg flex gap-3 items-start">
+                                            <div className="bg-pint-gold text-charcoal text-[10px] font-bold px-1.5 rounded uppercase tracking-wider mt-0.5">
+                                                AI
+                                            </div>
+                                            <p className="text-sm text-pint-gold font-medium italic">"{area.ai_rationale}"</p>
+                                        </div>
+                                    )}
+
                                     {/* Methodology / Transparency */}
                                     {area.scoring && (
                                         <div className="bg-white/5 p-3 rounded-lg border border-white/5 space-y-2">
