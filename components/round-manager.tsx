@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { JoinRoundForm } from '@/components/join-round-form'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { ResultsView } from '@/components/results-view'
 import { PubRecommendation, AreaOption } from '@/types'
 import { supabase } from '@/lib/supabase'
@@ -10,7 +11,7 @@ import { startAreaVoting, endRound, regressStage, updatePartyMember } from '@/ac
 import { AreaVotingView } from '@/components/area-voting-view'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
-import { LogOut, Settings, Users, ChevronDown } from 'lucide-react'
+import { LogOut, Settings, Users, ChevronDown, MapPin } from 'lucide-react'
 
 
 import { MemberMapModal } from '@/components/member-map-modal'
@@ -40,6 +41,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
 
     // Data States
     const [stage, setStage] = useState<'lobby' | 'voting' | 'pub_voting' | 'results'>('lobby')
+    const [viewingStage, setViewingStage] = useState<'lobby' | 'voting' | 'pub_voting' | 'results' | null>(null) // Review Mode
     const [roundStatus, setRoundStatus] = useState<string>('active')
     const [areaOptions, setAreaOptions] = useState<AreaOption[]>([])
     const [members, setMembers] = useState<any[]>([])
@@ -277,6 +279,48 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                     <span className="text-pint-gold font-mono text-xl font-bold leading-none">{code}</span>
                 </div>
 
+                {/* Center: Stage Runner (Read Only Review) */}
+                <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-1">
+                    {[
+                        { id: 'lobby', label: 'Lobby' },
+                        { id: 'voting', label: 'Area' },
+                        { id: 'pub_voting', label: 'Pubs' },
+                        { id: 'results', label: 'Result' }
+                    ].map((s, idx) => {
+                        // Logic: 
+                        // Active = Current Real Stage
+                        // Viewing = If viewingStage is set
+                        // Clickable = If stage is past/current
+
+                        const isCurrentReal = stage === s.id
+                        const isViewing = viewingStage === s.id || (!viewingStage && isCurrentReal)
+
+                        // We can only view past stages or current
+                        const stages = ['lobby', 'voting', 'pub_voting', 'results']
+                        const currentIdx = stages.indexOf(stage)
+                        const thisIdx = stages.indexOf(s.id)
+                        const isPast = thisIdx <= currentIdx
+
+                        return (
+                            <button
+                                key={s.id}
+                                disabled={!isPast}
+                                onClick={() => isPast && setViewingStage(s.id as any)}
+                                className={cn(
+                                    "flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all text-xs font-bold uppercase tracking-wider",
+                                    isViewing
+                                        ? "bg-pint-gold text-charcoal border-pint-gold shadow-[0_0_15px_rgba(255,215,0,0.4)]"
+                                        : isPast
+                                            ? "bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white"
+                                            : "opacity-30 border-transparent cursor-not-allowed"
+                                )}
+                            >
+                                {s.label}
+                            </button>
+                        )
+                    })}
+                </div>
+
                 {/* Center: Map Toggle (Context Aware) */}
                 <div className="absolute left-1/2 transform -translate-x-1/2 flex flex-col items-center">
                     <button
@@ -293,18 +337,45 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                 </div>
 
                 {/* Right: Host Controls & Exit */}
+                {/* Right: Host Controls & Exit */}
                 <div className="flex items-center gap-2">
-                    {/* Settings Button */}
-                    {joined && !isEditingSettings && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setIsEditingSettings(true)}
-                            className="text-white/60 hover:text-white p-2"
-                        >
-                            <Settings className="w-5 h-5" />
-                            <span className="sr-only">Settings</span>
-                        </Button>
+                    {/* Pin / Settings Button (Destructive Reset) */}
+                    {joined && (
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-white/60 hover:text-pint-gold p-2 transition-colors active:scale-95"
+                                >
+                                    <MapPin className="w-5 h-5" />
+                                    <span className="sr-only">Location Settings</span>
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="bg-charcoal border-white/10 text-white max-w-sm">
+                                <DialogHeader>
+                                    <DialogTitle>Change Location?</DialogTitle>
+                                    <DialogDescription className="text-white/60">
+                                        Warning: Changing your location will <span className="text-red-400 font-bold">RESET</span> the round to the Lobby for everyone.
+                                        <br /><br />
+                                        Are you sure you want to proceed?
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <DialogFooter>
+                                    <Button variant="ghost" className="text-white/40 hover:text-white" onClick={() => { /* Close logic via trigger usually */ }}>Cancel</Button>
+                                    <Button
+                                        variant="destructive"
+                                        className="bg-red-500/20 text-red-400 hover:bg-red-500/40 border border-red-500/50"
+                                        onClick={() => {
+                                            setIsEditingSettings(true)
+                                            // Close dialog handled by parent re-render or explicit state if controlled
+                                        }}
+                                    >
+                                        Yes, Reset Round
+                                    </Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
                     )}
 
                     {/* Host Back Button */}
@@ -336,6 +407,42 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                 </div>
             </div>
 
+            {/* Stage Runner (Sub-header) */}
+            <div className="fixed top-16 left-0 right-0 h-12 bg-charcoal/80 backdrop-blur-md border-b border-white/5 z-40 flex justify-center items-center gap-2">
+                {[
+                    { id: 'lobby', label: 'Lobby' },
+                    { id: 'voting', label: 'Area' },
+                    { id: 'pub_voting', label: 'Pubs' },
+                    { id: 'results', label: 'Result' }
+                ].map((s, idx) => {
+                    const stages = ['lobby', 'voting', 'pub_voting', 'results']
+                    const currentIdx = stages.indexOf(stage)
+                    const thisIdx = stages.indexOf(s.id)
+                    const isPast = thisIdx <= currentIdx
+
+                    // Active = The one we are VIEWING
+                    const isActive = viewingStage ? viewingStage === s.id : stage === s.id
+
+                    return (
+                        <button
+                            key={s.id}
+                            disabled={!isPast}
+                            onClick={() => isPast && setViewingStage(s.id as any)}
+                            className={cn(
+                                "px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all",
+                                isActive
+                                    ? "bg-white text-charcoal shadow-[0_0_10px_rgba(255,255,255,0.2)]"
+                                    : isPast
+                                        ? "text-white/40 hover:text-white"
+                                        : "text-white/10 cursor-not-allowed"
+                            )}
+                        >
+                            {s.label}
+                        </button>
+                    )
+                })}
+            </div>
+
             {/* Member Map Modal (Context Aware) */}
             <MemberMapModal
                 isOpen={mapState.isOpen}
@@ -350,12 +457,12 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
 
             {/* System Message Toast */}
             {systemMessage && (
-                <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[60] bg-pint-gold text-charcoal px-4 py-2 rounded-full shadow-lg font-bold text-sm animate-in fade-in slide-in-from-top-4">
+                <div className="fixed top-32 left-1/2 transform -translate-x-1/2 z-[60] bg-pint-gold text-charcoal px-4 py-2 rounded-full shadow-lg font-bold text-sm animate-in fade-in slide-in-from-top-4">
                     📢 {systemMessage}
                 </div>
             )}
 
-            <div className="mt-20 w-full max-w-md p-4 space-y-8 animate-fade-in-up flex flex-col items-center pb-20">
+            <div className="mt-32 w-full max-w-md p-4 space-y-8 animate-fade-in-up flex flex-col items-center pb-20">
 
                 {/* 0. EDIT SETTINGS VIEW */}
                 {isEditingSettings ? (
@@ -368,45 +475,50 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                         />
                         <Button variant="ghost" className="text-white/40 mt-4" onClick={() => setIsEditingSettings(false)}>Cancel</Button>
                     </div>
-                ) :
+                ) : (
+                    <>
+                        {/* RENDER BASED ON VIEWING STAGE (Review Mode) OR CURRENT STAGE */}
+                        {(() => {
+                            const effectiveStage = viewingStage || stage
+                            const isReview = !!viewingStage && viewingStage !== stage
 
-                    /* 1. RESULTS VIEW */
-                    stage === 'results' ? (
-                        recommendations ? (
-                            <ResultsView
-                                recommendations={winningPubId
-                                    ? recommendations.filter(r => r.place_id === winningPubId)
-                                    : recommendations}
-                            />
-                        ) : (
-                            <p className="text-white">Loading Results...</p>
-                        )
-                    ) :
+                            if (effectiveStage === 'results') {
+                                return recommendations ? (
+                                    <ResultsView
+                                        recommendations={winningPubId
+                                            ? recommendations.filter(r => r.place_id === winningPubId)
+                                            : recommendations}
+                                    />
+                                ) : <p className="text-white">Loading Results...</p>
+                            }
 
-                        /* 2. JOIN FORM */
-                        !joined ? (
-                            <JoinRoundForm
-                                roundId={roundId}
-                                onJoin={() => window.location.reload()}
-                                existingMembers={uniqueMembers}
-                            />
-                        ) :
+                            if (!joined) {
+                                return (
+                                    <JoinRoundForm
+                                        roundId={roundId}
+                                        onJoin={() => window.location.reload()}
+                                        existingMembers={uniqueMembers}
+                                    />
+                                )
+                            }
 
-                            /* 3. PUB VOTING VIEW */
-                            stage === 'pub_voting' && recommendations ? (
-                                <PubVotingView
-                                    pubs={recommendations}
-                                    // @ts-ignore
-                                    round={{ id: roundId }}
-                                    currentUserId={myUserId || ''}
-                                    onVote={() => { }}
-                                    onConfirmWinner={handleConfirmPub}
-                                    isHost={isHost}
-                                />
-                            ) :
+                            if (effectiveStage === 'pub_voting' && recommendations) {
+                                return (
+                                    <PubVotingView
+                                        pubs={recommendations}
+                                        // @ts-ignore
+                                        round={{ id: roundId }}
+                                        currentUserId={myUserId || ''}
+                                        onVote={() => { if (!isReview) { } }} // Disable in review
+                                        onConfirmWinner={async (pid) => { if (!isReview) handleConfirmPub(pid) }}
+                                        isHost={isHost}
+                                        readOnly={isReview}
+                                    />
+                                )
+                            }
 
-                                /* 4. AREA VOTING VIEW */
-                                stage === 'voting' ? (
+                            if (effectiveStage === 'voting') {
+                                return (
                                     <div className="relative w-full">
                                         <AreaVotingView
                                             roundId={roundId}
@@ -415,113 +527,116 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                             currentUserMemberId={myMemberId || undefined}
                                             isHost={isHost}
                                             aiStrategy={aiStrategy || undefined} // Pass AI Strategy
-                                            onVote={async (areaId) => { if (myMemberId) console.log("Vote cast", areaId) }} // Optimistic handled in View
+                                            onVote={async (areaId) => { if (myMemberId && !isReview) console.log("Vote cast", areaId) }}
                                             onStageChange={async (newStage) => {
-                                                setStage(newStage as any)
+                                                if (!isReview) setStage(newStage as any)
                                             }}
                                         />
+                                        {isReview && <div className="absolute inset-0 bg-transparent z-10 pointer-events-none" />}
                                     </div>
-                                ) :
+                                )
+                            }
 
-                                    /* 5. LOBBY */
-                                    (
-                                        <div className="w-full text-center space-y-8">
-                                            <div>
-                                                <h1 className="text-3xl font-bold text-white">Lobby</h1>
-                                                <p className="text-white/60">Waiting for everyone...</p>
-                                            </div>
+                            // Lobby
+                            return (
+                                <div className="w-full text-center space-y-8">
+                                    <div>
+                                        <h1 className="text-3xl font-bold text-white">Lobby</h1>
+                                        <p className="text-white/60">Waiting for everyone...</p>
+                                    </div>
 
-                                            <div className="glass-panel p-6 rounded-2xl flex flex-col items-center gap-6 w-full">
-                                                <div className="flex flex-col gap-3 w-full">
-                                                    {uniqueMembers.map((member) => {
-                                                        // Resolve Start Text (Lobby Version)
-                                                        let startText = 'Location Pending'
-                                                        if (member.start_location_type === 'station') {
-                                                            startText = stationData[member.start_station_id]?.name || 'Station'
-                                                        } else if (member.start_location_type === 'live' || member.start_location_type === 'custom') {
-                                                            startText = member.location?.address || 'Pinned Location'
-                                                            // Keep it short
-                                                            if (startText.length > 25) startText = startText.split(',')[0] + '...'
-                                                        }
+                                    <div className="glass-panel p-6 rounded-2xl flex flex-col items-center gap-6 w-full">
+                                        <div className="flex flex-col gap-3 w-full">
+                                            {uniqueMembers.map((member) => {
+                                                // Resolve Start Text (Lobby Version)
+                                                let startText = 'Location Pending'
+                                                if (member.start_location_type === 'station') {
+                                                    startText = stationData[member.start_station_id]?.name || 'Station'
+                                                } else if (member.start_location_type === 'live' || member.start_location_type === 'custom') {
+                                                    startText = member.location?.address || 'Pinned Location'
+                                                    // Keep it short
+                                                    if (startText.length > 25) startText = startText.split(',')[0] + '...'
+                                                }
 
-                                                        // Resolve End (if different)
-                                                        let endText = null
-                                                        if (member.end_location_type === 'station') {
-                                                            endText = stationData[member.end_station_id]?.name || 'Station'
-                                                        } else if (member.end_location_type === 'custom') {
-                                                            endText = 'Custom Return'
-                                                        }
+                                                // Resolve End (if different)
+                                                let endText = null
+                                                if (member.end_location_type === 'station') {
+                                                    endText = stationData[member.end_station_id]?.name || 'Station'
+                                                } else if (member.end_location_type === 'custom') {
+                                                    endText = 'Custom Return'
+                                                }
 
-                                                        return (
-                                                            <div
-                                                                key={member.id}
-                                                                onClick={() => setMapState({ isOpen: true, mode: 'single', focusedMemberId: member.id })}
-                                                                className="flex items-center gap-4 bg-white/5 hover:bg-white/10 p-3 rounded-xl border border-white/5 hover:border-pint-gold/50 animate-pop-in cursor-pointer transition-all active:scale-95 group"
-                                                            >
-                                                                <div className="w-12 h-12 rounded-full overflow-hidden border border-white/20 relative bg-black/40 flex-shrink-0">
-                                                                    {member.photo_path ? (
-                                                                        /* eslint-disable-next-line @next/next/no-img-element */
-                                                                        <img
-                                                                            src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/temporary_selfies/${member.photo_path}`}
-                                                                            alt={member.name}
-                                                                            className="w-full h-full object-cover transform scale-x-[-1]"
-                                                                        />
-                                                                    ) : (
-                                                                        <div className="w-full h-full flex items-center justify-center text-white/50 font-bold">
-                                                                            {member.name[0]?.toUpperCase()}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-
-                                                                <div className="flex-1 min-w-0 text-left">
-                                                                    <p className="text-white font-bold truncate">{member.name}</p>
-                                                                    <div className="flex flex-col text-xs text-white/60">
-                                                                        <span className="truncate">From: {startText}</span>
-                                                                        {endText && <span className="truncate">To: {endText}</span>}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        )
-                                                    })}
-                                                    {uniqueMembers.length === 0 && <p className="text-white/20 italic">No one yet...</p>}
-                                                </div>
-
-                                                <div className="w-full h-px bg-white/10" />
-
-                                                <div className="flex flex-col gap-2">
-                                                    <p className="text-white text-lg font-medium">{uniqueMembers.length} {uniqueMembers.length === 1 ? 'Person' : 'People'} Ready</p>
-                                                    {isHost ? (
-                                                        <p className="text-sm text-pint-gold animate-pulse">You are the host.</p>
-                                                    ) : (
-                                                        <p className="text-sm text-white/40 max-w-xs">Waiting for host to start...</p>
-                                                    )}
-                                                </div>
-
-                                                {isHost ? (
-                                                    <Button
-                                                        variant="primary"
-                                                        size="lg"
-                                                        className="w-full mt-2 shadow-[0_0_20px_rgba(255,215,0,0.4)]"
-                                                        onClick={handleStartVoting}
-                                                        disabled={generatingAreas || uniqueMembers.length === 0}
+                                                return (
+                                                    <div
+                                                        key={member.id}
+                                                        onClick={() => setMapState({ isOpen: true, mode: 'single', focusedMemberId: member.id })}
+                                                        className="flex items-center gap-4 bg-white/5 hover:bg-white/10 p-3 rounded-xl border border-white/5 hover:border-pint-gold/50 animate-pop-in cursor-pointer transition-all active:scale-95 group"
                                                     >
-                                                        {generatingAreas ? 'AI is Thinking...' : 'Calculate Options'}
-                                                    </Button>
-                                                ) : (
-                                                    <div className="p-3 bg-white/5 rounded-lg w-full">
-                                                        <p className="text-white/50 text-sm">Host controls the round.</p>
-                                                    </div>
-                                                )}
-                                            </div>
+                                                        <div className="w-12 h-12 rounded-full overflow-hidden border border-white/20 relative bg-black/40 flex-shrink-0">
+                                                            {member.photo_path ? (
+                                                                /* eslint-disable-next-line @next/next/no-img-element */
+                                                                <img
+                                                                    src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/temporary_selfies/${member.photo_path}`}
+                                                                    alt={member.name}
+                                                                    className="w-full h-full object-cover transform scale-x-[-1]"
+                                                                />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center text-white/50 font-bold">
+                                                                    {member.name[0]?.toUpperCase()}
+                                                                </div>
+                                                            )}
+                                                        </div>
 
-                                            <div className="flex justify-center gap-4">
-                                                <Button variant="ghost" className="text-white/30 hover:text-white" onClick={refreshMembers}>
-                                                    ↻ Refresh
-                                                </Button>
-                                            </div>
+                                                        <div className="flex-1 min-w-0 text-left">
+                                                            <p className="text-white font-bold truncate">{member.name}</p>
+                                                            <div className="flex flex-col text-xs text-white/60">
+                                                                <span className="truncate">From: {startText}</span>
+                                                                {endText && <span className="truncate">To: {endText}</span>}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+                                            {uniqueMembers.length === 0 && <p className="text-white/20 italic">No one yet...</p>}
                                         </div>
-                                    )}
+
+                                        <div className="w-full h-px bg-white/10" />
+
+                                        <div className="flex flex-col gap-2">
+                                            <p className="text-white text-lg font-medium">{uniqueMembers.length} {uniqueMembers.length === 1 ? 'Person' : 'People'} Ready</p>
+                                            {isHost ? (
+                                                <p className="text-sm text-pint-gold animate-pulse">You are the host.</p>
+                                            ) : (
+                                                <p className="text-sm text-white/40 max-w-xs">Waiting for host to start...</p>
+                                            )}
+                                        </div>
+
+                                        {isHost ? (
+                                            <Button
+                                                variant="primary"
+                                                size="lg"
+                                                className="w-full mt-2 shadow-[0_0_20px_rgba(255,215,0,0.4)]"
+                                                onClick={handleStartVoting}
+                                                disabled={generatingAreas || uniqueMembers.length === 0}
+                                            >
+                                                {generatingAreas ? 'AI is Thinking...' : 'Calculate Options'}
+                                            </Button>
+                                        ) : (
+                                            <div className="p-3 bg-white/5 rounded-lg w-full">
+                                                <p className="text-white/50 text-sm">Host controls the round.</p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex justify-center gap-4">
+                                        <Button variant="ghost" className="text-white/30 hover:text-white" onClick={refreshMembers}>
+                                            ↻ Refresh
+                                        </Button>
+                                    </div>
+                                </div>
+                            )
+                        }
             </div>
-        </div>
-    )
+            </div>
+            )
 }
