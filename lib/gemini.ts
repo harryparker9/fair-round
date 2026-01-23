@@ -83,9 +83,13 @@ export const gemini = {
         ${context}
         
         OUTPUT:
-        Write 2-3 short, professional but friendly sentences explaining your global strategy. 
-        Example: "I determined that 3 people are in South London, so I pulled the center southwards. I'm looking for Northern Line hubs to minimize transfers for Harry."
-        Do NOT mention specific station candidates yet. Focus on the STRATEGY.
+        Write 2-3 short, specific sentences explaining your global strategy.
+        CRITICAL: YOU MUST MENTION SPECIFIC PEOPLE AND LOCATIONS.
+        
+        Bad Example: "I looked for a central hub that serves everyone equally." (Too vague)
+        Good Example: "Because Harry is in Angel and Tom is in Brixton, I pulled the search center towards the Victoria Line. I'm prioritizing hubs like Stockwell to minimize changes for everyone."
+        
+        Do NOT mention specific station candidates yet (e.g. dont say "I chose Waterloo"). Focus on the STRATEGY (Direction, Lines, compromise).
         `;
 
         try {
@@ -132,8 +136,8 @@ export const gemini = {
         }
     },
 
-    // 4. JUDGE: Pick the Winner
-    judgeStations: async (candidates: any[], context: string): Promise<any> => {
+    // 4. JUDGE: Pick the Winner & Explain ALL Options
+    judgeStations: async (candidates: any[], context: string): Promise<{ winner_name: string, rationales: Record<string, string> } | null> => {
         if (!apiKey) return null;
 
         // Simplify candidates for token limit
@@ -141,30 +145,32 @@ export const gemini = {
             name: c.name,
             total_time: c.total_time,
             max_trip: Math.max(...Object.values(c.travel_times).map((t: any) => t.to + t.home)),
-            // We can add lines/zone if we had them.
-            journeys: Object.entries(c.travel_times).map(([name, t]: [string, any]) => `${name}: ${Math.round(t.to)}m way`).join(', ')
+            journeys: Object.entries(c.travel_times).map(([name, t]: [string, any]) => `${name}: ${Math.round(t.to)}m`).join(', ')
         }));
 
         const prompt = `
         You are the Final Judge for a London meetup.
-        OBJECTIVE: Rank these options and pick the single best winner.
+        OBJECTIVE: Evaluate these candidates and provide a specific rationale for EACH one.
 
         CONTEXT:
         ${context}
 
-        CANDIDATES (Real Travel Data):
+        CANDIDATES:
         ${JSON.stringify(simpleCandidates, null, 2)}
 
         RULES:
-        1. Minimize Inefficiency: Total travel time matters, but avoiding 90m+ nightmares matters more.
-        2. "The Vibe": Direct lines are better than fast changes.
-        3. Explain WHY: Write a "Rationale" that explains the choice to the users.
+        1. Winner: Best balance of time and fairness (avoid >90m trips).
+        2. Rationale: For EVERY candidate, write 1 short, witty, specific sentence explaining its pros/cons.
+           - Mention specific people (e.g. "Good for Harry, but bad for Tom").
+           - NOT generic (e.g. "Good option"). Be specific!
 
         OUTPUT JSON:
         {
             "winner_name": "Station Name",
-            "rationale": "One friendly, witty sentence explaining why. Mention specific people if relevant (e.g. 'Saved Harry a change').",
-            "rankings": ["Station A", "Station B", "Station C"]
+            "rationales": {
+                "Station Name": "Rationale text...",
+                "Station B": "Rationale text..."
+            }
         }
         `;
 

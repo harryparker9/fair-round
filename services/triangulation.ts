@@ -273,7 +273,14 @@ export const triangulationService = {
         const scoredStations = await Promise.all(candidates.slice(0, 10).map(async (station) => {
             let totalTime = 0;
             let maxTotalTime = 0;
-            const travelTimes: Record<string, { to: number, home: number, summary?: string }> = {};
+            const travelTimes: Record<string, {
+                to: number;
+                home: number;
+                summary_to?: string;
+                summary_home?: string;
+                start_name?: string;
+                end_name?: string;
+            }> = {};
 
             const journeyPromises = activeMembers.map(async (member) => {
                 const detailsTo = await transportService.getJourneyDetails(member.location!, { lat: station.lat, lng: station.lng });
@@ -282,25 +289,45 @@ export const triangulationService = {
 
                 // Estimate Return
                 let durationHome = durationTo;
+                let summaryHome = "Same as outbound";
+
                 // If end location is significantly different
                 if (member.endLocation && (Math.abs(member.location!.lat - member.endLocation.lat) > 0.001 || Math.abs(member.location!.lng - member.endLocation.lng) > 0.001)) {
                     const params = await transportService.getJourneyDetails({ lat: station.lat, lng: station.lng }, member.endLocation);
                     durationHome = params?.duration || durationTo;
+                    summaryHome = params?.summary || "Direct";
+                } else {
+                    // Even if same, fetch reverse summary for detailed view?
+                    // Optimization: Use outbound summary reversed logic? No, let's fetch for accuracy as requested.
+                    const params = await transportService.getJourneyDetails({ lat: station.lat, lng: station.lng }, member.endLocation!);
+                    // durationHome might be slightly different due to schedules
+                    durationHome = params?.duration || durationTo;
+                    summaryHome = params?.summary || "Direct";
                 }
 
                 return {
                     id: member.id,
                     name: member.name,
+                    startName: member.startName,
+                    endName: member.endName,
                     to: durationTo,
                     home: durationHome,
-                    summary: summaryTo
+                    summaryTo,
+                    summaryHome
                 };
             });
 
             const results = await Promise.all(journeyPromises);
 
             results.forEach(res => {
-                travelTimes[res.name] = { to: res.to, home: res.home, summary: res.summary };
+                travelTimes[res.name] = {
+                    to: res.to,
+                    home: res.home,
+                    summary_to: res.summaryTo,
+                    summary_home: res.summaryHome,
+                    start_name: res.startName,
+                    end_name: res.endName
+                };
                 const personTotal = res.to + res.home;
                 totalTime += personTotal;
                 if (personTotal > maxTotalTime) maxTotalTime = personTotal;
@@ -326,7 +353,7 @@ export const triangulationService = {
 
         // E. JUDGE (Gemini)
         const topCandidates = validScored.slice(0, 5);
-        let aiverdict = null;
+        let aiverdict: { winner_name: string, rationales: Record<string, string> } | null = null;
         try {
             console.log("Judging top candidates...");
             aiverdict = await gemini.judgeStations(topCandidates, context);
@@ -338,7 +365,13 @@ export const triangulationService = {
         // F. FORMAT FINAL RESULT
         const recommendations = topCandidates.slice(0, 3).map(s => {
             const isWinner = aiverdict && s.name === aiverdict.winner_name;
-            const rationale = isWinner ? aiverdict.rationale : (aiverdict?.rankings?.includes(s.name) ? "Strategic option." : "Good alternatives.");
+            // Get specific rationale if available, otherwise generic fallback
+            let rationale = aiverdict?.rationales?.[s.name] || "Strategic option.";
+
+            // If it IS the winner but no specific rationale found, fallback key might be slightly different (fuzzy match?)
+            if (isWinner && !aiverdict?.rationales?.[s.name]) {
+                rationale = "Selected as the best balance for the group.";
+            }
 
             return {
                 id: s.id,

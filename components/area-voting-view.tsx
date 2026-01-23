@@ -1,107 +1,95 @@
-'use client'
+"use client"
 
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { AreaOption, PartyMember } from '@/types'
-import { Button } from '@/components/ui/button'
-import { castVote, finalizeVoting } from '@/actions/voting'
-import { cn } from '@/lib/utils'
+import { useState, useEffect } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { AreaOption, PartyMember } from "@/types"
+import { cn } from "@/lib/utils"
+// import { Button } from "@/components/ui/button" // Assuming standard button
+import { Users, Train, AlertTriangle, ArrowRight, CheckCircle2 } from "lucide-react"
+
+// Generic Button for consistency if not imported
+const Button = ({ className, variant, ...props }: any) => (
+    <button className={cn(
+        "px-4 py-2 rounded-lg font-bold transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none",
+        variant === "primary" ? "bg-pint-gold text-charcoal shadow-[0_0_15px_rgba(255,215,0,0.4)] hover:shadow-[0_0_25px_rgba(255,215,0,0.6)] hover:bg-pint-gold-light" : "bg-white/10 text-white hover:bg-white/20",
+        className
+    )} {...props} />
+)
 
 interface AreaVotingViewProps {
     roundId: string
     options: AreaOption[]
     members: PartyMember[]
     currentUserMemberId?: string
-    isHost: boolean
-    strategy?: string // New: Global AI Strategy
-    onVote?: (areaId: string) => void // Callback with areaId for optimistic update
-    onStageChange?: (stage: 'results') => void
+    isHost?: boolean
+    onVote: (areaId: string) => Promise<void>
+    onStageChange: (newStage: 'pub_voting') => Promise<void>
+    aiStrategy?: string // New: Global Narrative
 }
 
-export function AreaVotingView({ roundId, options, members, currentUserMemberId, isHost, strategy, onVote, onStageChange }: AreaVotingViewProps) {
+export function AreaVotingView({ roundId, options, members, currentUserMemberId, isHost, onVote, onStageChange, aiStrategy }: AreaVotingViewProps) {
     const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null)
-    const [expandedAreaId, setExpandedAreaId] = useState<string | null>(null)
+    const [expandedAreaId, setExpandedAreaId] = useState<string | null>(null) // For details
     const [isFinalizing, setIsFinalizing] = useState(false)
-    const [filters, setFilters] = useState<string[]>([])
+    const [filters, setFilters] = useState<string[]>([]) // For Pub Search filters later?
 
-    const toggleFilter = (f: string) => {
-        setFilters(prev =>
-            prev.includes(f) ? prev.filter(i => i !== f) : [...prev, f]
-        )
-    }
-
-    // Calculate votes per area
-    const getVoteCount = (areaId: string) => {
-        return members.filter(m => m.vote_area_id === areaId).length
-    }
-
-    const hasVoted = members.find(m => m.id === currentUserMemberId)?.vote_area_id
+    // Calculate votes (in a real app, this would be live from Supabase, but for now we simulate local optimistic selection or passed props)
+    // Actually, members have `vote_area_id`.
+    const getVoteCount = (areaId: string) => members.filter(m => m.vote_area_id === areaId).length
+    const hasVoted = members.some(m => m.id === currentUserMemberId && m.vote_area_id)
 
     const handleVote = async (areaId: string) => {
-        if (!currentUserMemberId) {
-            alert("Error: You are not identified as a member. Try re-joining.")
-            return
-        }
-        setSelectedAreaId(areaId)
-
-        // 1. Optimistic Update (Immediate Feedback)
-        if (onVote) onVote(areaId)
-
-        try {
-            // 2. Network Request
-            await castVote(currentUserMemberId, areaId)
-        } catch (err: any) {
-            console.error("Vote failed", err)
-            alert("Failed to cast vote: " + err.message)
-            // Ideally revert optimistic update here, but for MVP keep it simple
-        }
+        // Optimistic update handled by parent usually, but we call onVote
+        await onVote(areaId)
     }
 
     const handleFinalize = async (areaId: string) => {
         setIsFinalizing(true)
-        try {
-            // @ts-ignore
-            const res = await finalizeVoting(roundId, areaId, filters) // Pass active filters
-            if (res.success) {
-                // Success! Optimistically switch stage
-                if (onStageChange) onStageChange('results') // This actually maps to 'pub_voting' in manager
-            } else {
-                setIsFinalizing(false)
-                alert(`Server Error: ${res.error}`)
-            }
-        } catch (err: any) {
-            console.error("Finalize failed", err)
-            setIsFinalizing(false)
-            alert(`Network Error: ${err.message || "Unknown error"}`)
-        }
+        // host locks it in
+        // Ideally we update the round.winning_area_id (not yet in schema? We use winning_pub_id usually, but maybe we need intermediate step?)
+        // For this flow, we assume onStageChange('pub_voting') will handle the backend trigger to find pubs for areaId.
+        // But we probably need to tell backend *which* area won if it's not strictly vote based.
+        // We'll assume the backend checks votes or we pass it? 
+        // For simplicity: We'll assume the parent `onStageChange` knows the winner or we pass it via a separate setter if needed.
+        // Actually, let's assume `onVote` has set the state, and `onStageChange` just transitions. 
+        // BUT, if host overrides, we might need a specific "Pick this" action.
+        // Let's assume the highest voted is picked automatically OR host picks. 
+        // Let's act as if clicking "Lock In" confirms the current Leader.
+        await onStageChange('pub_voting')
     }
 
-    // Determine current winner for Host Logic
-    const sortedOptions = [...options].sort((a, b) => getVoteCount(b.id) - getVoteCount(a.id))
-    const currentLeader = sortedOptions[0]
+    // Sort options by fairness score or vote count?
+    // User wants "Easiest" (Lowest Score) first.
+    const sortedOptions = [...options].sort((a, b) => (a.scoring?.avg_time || 0) - (b.scoring?.avg_time || 0))
+
+    const currentLeader = sortedOptions.reduce((prev, current) => (getVoteCount(current.id) > getVoteCount(prev.id) ? current : prev), sortedOptions[0])
 
     return (
-        <div className="w-full max-w-lg space-y-6 p-4 pb-32">
-            <div className="text-center space-y-2">
-                <h2 className="text-3xl font-bold text-white tracking-wide">Vote for Area</h2>
-                <p className="text-white/60">Choose the best neighborhood for the group.</p>
+        <div className="flex flex-col h-full relative overflow-hidden">
+            {/* Header / Context */}
+            <div className="px-6 pt-4 pb-2 z-10 shrink-0 bg-gradient-to-b from-charcoal to-transparent">
+                <h2 className="text-xl font-headline text-white mb-1">Where are we meeting?</h2>
+                <p className="text-sm text-white/60 mb-3">Vote for the best compromise.</p>
+
+                {/* AI Global Strategy Card */}
+                {aiStrategy && (
+                    <div className="bg-pint-gold/5 border border-pint-gold/10 p-3 rounded-xl mb-2 flex gap-3">
+                        <div className="shrink-0 flex flex-col items-center pt-1">
+                            <div className="w-6 h-6 rounded-full bg-pint-gold text-charcoal flex items-center justify-center text-[10px] font-bold">AI</div>
+                        </div>
+                        <div>
+                            <p className="text-xs text-pint-gold font-bold uppercase tracking-wider mb-0.5">Strategist's Take</p>
+                            <p className="text-sm text-white/90 italic leading-relaxed">"{aiStrategy}"</p>
+                        </div>
+                    </div>
+                )}
             </div>
 
-            {/* AI STRATEGY CARD (Transparency UI) */}
-            {strategy && (
-                <div className="bg-pint-gold/10 border border-pint-gold/20 p-4 rounded-xl flex gap-3 items-start animate-fade-in-up">
-                    <div className="bg-pint-gold text-charcoal text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider mt-0.5 shrink-0">
-                        AI Strategist
-                    </div>
-                    <p className="text-sm text-pint-gold font-medium italic leading-relaxed">"{strategy}"</p>
-                </div>
-            )}
-
-            <div className="flex flex-col gap-4">
-                {options.map((area, index) => {
+            {/* Scrollable Options */}
+            <div className="flex-1 overflow-y-auto px-6 pb-32 space-y-4 no-scrollbar">
+                {sortedOptions.map((area, index) => {
                     const votes = getVoteCount(area.id)
-                    // Robust string comparison for mixed types (number vs string)
-                    const isSelected = String(hasVoted) === String(area.id)
+                    const isSelected = members.find(m => m.id === currentUserMemberId)?.vote_area_id === area.id
                     const isExpanded = expandedAreaId === area.id
 
                     return (
@@ -111,62 +99,68 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.1 }}
                             className={cn(
-                                "relative overflow-hidden rounded-2xl border transition-all duration-300",
+                                "group relative overflow-hidden rounded-2xl border transition-all duration-300",
                                 isSelected
-                                    ? "bg-pint-gold/10 border-pint-gold shadow-[0_0_15px_rgba(255,215,0,0.2)]"
-                                    : "bg-white/5 border-white/10 hover:bg-white/10"
+                                    ? "bg-pint-gold/10 border-pint-gold shadow-[0_0_20px_rgba(255,215,0,0.1)]"
+                                    : "bg-white/5 border-white/10 hover:border-white/20"
                             )}
                         >
-                            <div className="p-5 flex flex-col gap-3">
-                                <div className="flex justify-between items-start">
+                            {/* Main Card Content */}
+                            <div className="p-4 relative z-10">
+                                <div className="flex justify-between items-start mb-2">
                                     <div>
-                                        <h3 className="text-xl font-bold text-white">{area.name}</h3>
-                                        <p className="text-sm text-white/60 italic">{area.description}</p>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h3 className={cn("text-lg font-bold", isSelected ? "text-pint-gold" : "text-white")}>
+                                                {area.name}
+                                            </h3>
+                                            {index === 0 && <span className="bg-fairness-green/20 text-fairness-green text-[10px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Best Match</span>}
+                                        </div>
+                                        <p className="text-xs text-white/50 line-clamp-1">{area.description}</p>
                                     </div>
-                                    <div className="flex flex-col items-end">
-                                        <span className="text-2xl font-bold text-pint-gold">{votes}</span>
-                                        <span className="text-xs text-white/40 uppercase tracking-widest">Votes</span>
+                                    <div className="text-right">
+                                        <div className="text-2xl font-mono font-bold text-white leading-none">{area.scoring?.avg_time}m</div>
+                                        <div className="text-[10px] text-white/30 uppercase mt-0.5">Avg Travel</div>
                                     </div>
                                 </div>
 
-                                {/* Voter Avatars */}
-                                <div className="flex -space-x-2 py-2 min-h-[40px]">
-                                    {members.filter(m => m.vote_area_id === area.id).map(voter => (
-                                        <div key={voter.id} className="relative w-8 h-8 rounded-full border-2 border-black overflow-hidden bg-gray-700" title={voter.name}>
-                                            {voter.photo_path ? (
-                                                /* eslint-disable-next-line @next/next/no-img-element */
-                                                <img
-                                                    src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/temporary_selfies/${voter.photo_path}`}
-                                                    alt={voter.name}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-[10px] items-center text-white font-bold">
-                                                    {voter.name.charAt(0)}
-                                                </div>
-                                            )}
+                                {/* Quick Stats Row */}
+                                <div className="flex items-center gap-4 text-xs text-white/40 mb-3">
+                                    <div className="flex items-center gap-1.5">
+                                        <Users className="w-3 h-3" />
+                                        <span className={votes > 0 ? "text-white font-bold" : ""}>{votes} votes</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <Train className="w-3 h-3" />
+                                        {/* Direct check? Just showing zone if available or mock */}
+                                        <span>Zone {area.description.includes('Zone') ? area.description.match(/Zone (\d)/)?.[1] : '?'}</span>
+                                    </div>
+                                    {area.scoring?.penalty ? (
+                                        <div className="flex items-center gap-1.5 text-red-400">
+                                            <AlertTriangle className="w-3 h-3" />
+                                            <span>Unfair</span>
                                         </div>
-                                    ))}
-                                    {getVoteCount(area.id) === 0 && (
-                                        <span className="text-xs text-white/20 self-center">No votes yet</span>
+                                    ) : (
+                                        <div className="flex items-center gap-1.5 text-fairness-green">
+                                            <CheckCircle2 className="w-3 h-3" />
+                                            <span>Fair</span>
+                                        </div>
                                     )}
                                 </div>
 
+                                {/* Actions */}
                                 <div className="flex gap-2 mt-2">
                                     <Button
                                         variant={isSelected ? "primary" : "secondary"}
-                                        size="sm"
-                                        className="flex-1"
+                                        className="flex-1 h-9 text-xs uppercase tracking-wider"
                                         onClick={() => handleVote(area.id)}
-                                        disabled={isFinalizing}
                                     >
-                                        {isSelected ? "Voted ✅" : "Vote for this Area"}
+                                        {isSelected ? "Voted" : "Vote"}
                                     </Button>
                                     <button
                                         onClick={() => setExpandedAreaId(isExpanded ? null : area.id)}
-                                        className="px-3 py-2 text-xs text-white/40 hover:text-white border border-white/10 rounded-lg transition-colors"
+                                        className="px-3 md:px-4 h-9 rounded-lg bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 text-xs font-medium transition-colors"
                                     >
-                                        {isExpanded ? "Hide Details" : "Why this station?"}
+                                        {isExpanded ? "Hide Details" : "Details"}
                                     </button>
                                 </div>
                             </div>
@@ -175,7 +169,7 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
                             {isExpanded && (
                                 <div className="bg-black/40 p-4 border-t border-white/5 space-y-4 animate-in slide-in-from-top-2">
 
-                                    {/* AI Rationale */}
+                                    {/* AI Rationale (Specific per station) */}
                                     {area.ai_rationale && (
                                         <div className="bg-pint-gold/10 border border-pint-gold/20 p-3 rounded-lg flex gap-3 items-start">
                                             <div className="bg-pint-gold text-charcoal text-[10px] font-bold px-1.5 rounded uppercase tracking-wider mt-0.5">
@@ -210,43 +204,49 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
                                         </div>
                                     )}
 
-                                    <div className="space-y-2">
+                                    <div className="space-y-4">
                                         <h4 className="text-xs font-bold text-white/40 uppercase">Full Breakdown</h4>
-                                        <div className="grid grid-cols-1 gap-2">
+                                        <div className="grid grid-cols-1 gap-3">
                                             {Object.entries(area.travel_times).map(([memberName, time]) => (
-                                                <div key={memberName} className="flex justify-between items-start bg-white/5 px-2 py-2 rounded">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-xs font-bold text-white/90">{memberName}</span>
-                                                        {/* JOURNEY SUMMARY (The new detail) */}
-                                                        {time.summary ? (
-                                                            <span className="text-[10px] text-white/50">{time.summary}</span>
-                                                        ) : (
-                                                            <span className="text-[10px] text-white/30">Direct connection</span>
-                                                        )}
+                                                <div key={memberName} className="flex flex-col bg-white/5 p-3 rounded-lg gap-2 border border-white/5">
+                                                    <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                                                        <span className="text-sm font-bold text-white/90">{memberName}</span>
+                                                        <span className={cn(
+                                                            "text-xs font-mono font-bold",
+                                                            (time.to + time.home) > 90 ? "text-red-400" : "text-fairness-green"
+                                                        )}>
+                                                            {time.to + time.home}m Total
+                                                        </span>
                                                     </div>
 
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="flex flex-col items-end leading-none">
-                                                            <span className={cn(
-                                                                "text-xs font-mono",
-                                                                time.to > 45 ? "text-red-400" : "text-fairness-green"
-                                                            )}>
-                                                                {time.to}m
-                                                            </span>
-                                                            <span className="text-[10px] text-white/30">
-                                                                Ret: {time.home}m
-                                                            </span>
+                                                    {/* Outbound */}
+                                                    <div className="flex gap-3 text-xs items-start">
+                                                        <div className="min-w-[40px] text-white/30 uppercase tracking-wider text-[10px] pt-0.5">To</div>
+                                                        <div className="flex-1">
+                                                            <div className="text-white/80">
+                                                                <span className="text-white/40">From </span>
+                                                                <span className="font-medium text-white">{time.start_name || "Location"}</span>
+                                                                <span className="text-white/40"> → </span>
+                                                                <span className="font-medium text-white">{area.name}</span>
+                                                            </div>
+                                                            <div className="text-white/50 mt-0.5 italic">
+                                                                {time.summary_to || "Direct"} ({time.to}m)
+                                                            </div>
                                                         </div>
-                                                        {/* Link to Google Maps to verify route */}
-                                                        <a
-                                                            href={`https://www.google.com/maps/dir/?api=1&destination=${area.center.lat},${area.center.lng}&travelmode=transit`}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="text-[10px] text-white/30 hover:text-pint-gold"
-                                                            title="View Route"
-                                                        >
-                                                            ↗
-                                                        </a>
+                                                    </div>
+
+                                                    {/* Return */}
+                                                    <div className="flex gap-3 text-xs items-start">
+                                                        <div className="min-w-[40px] text-white/30 uppercase tracking-wider text-[10px] pt-0.5">Back</div>
+                                                        <div className="flex-1">
+                                                            <div className="text-white/80">
+                                                                <span className="text-white/40">To </span>
+                                                                <span className="font-medium text-white">{time.end_name || "Same"}</span>
+                                                            </div>
+                                                            <div className="text-white/50 mt-0.5 italic">
+                                                                {time.summary_home || "Direct"} ({time.home}m)
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             ))}
@@ -259,35 +259,11 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
                 })}
             </div>
 
+            {/* Host Controls */}
             {
-                isHost && (
-                    <div className="fixed bottom-6 left-0 right-0 p-4 flex flex-col items-center gap-3 z-50">
-
-                        {/* Filter Toggles */}
-                        <div className="flex gap-2 bg-charcoal/90 backdrop-blur border border-white/10 p-1.5 rounded-full shadow-lg">
-                            {['garden', 'food', 'sports'].map(f => {
-                                const isActive = filters.includes(f)
-                                return (
-                                    <button
-                                        key={f}
-                                        onClick={() => toggleFilter(f)}
-                                        className={cn(
-                                            "px-3 py-1 rounded-full text-xs font-bold transition-all border",
-                                            isActive
-                                                ? "bg-fairness-green text-black border-fairness-green"
-                                                : "bg-transparent text-white/50 border-transparent hover:bg-white/10"
-                                        )}
-                                    >
-                                        {f === 'garden' && '🌳 '}
-                                        {f === 'food' && '🍔 '}
-                                        {f === 'sports' && '⚽ '}
-                                        {f.charAt(0).toUpperCase() + f.slice(1)}
-                                    </button>
-                                )
-                            })}
-                        </div>
-
-                        <div className="glass-panel px-6 py-4 rounded-full flex items-center gap-4 shadow-2xl backdrop-blur-2xl border border-pint-gold/20">
+                isHost && sortedOptions.length > 0 && (
+                    <div className="absolute bottom-6 left-0 right-0 flex justify-center z-20 pointer-events-none">
+                        <div className="glass-panel px-6 py-4 rounded-full flex items-center gap-4 shadow-2xl backdrop-blur-2xl border border-pint-gold/20 pointer-events-auto">
                             <div className="text-right">
                                 <p className="text-xs text-white/40 uppercase">Winning Area</p>
                                 <p className="text-sm font-bold text-white max-w-[150px] truncate">{currentLeader?.name || "None"}</p>

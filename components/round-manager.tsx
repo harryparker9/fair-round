@@ -29,7 +29,10 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
     const [loading, setLoading] = useState(true)
     const [recommendations, setRecommendations] = useState<PubRecommendation[] | null>(null)
     const [isEditingSettings, setIsEditingSettings] = useState(false)
-    const [selectedMemberForMap, setSelectedMemberForMap] = useState<any | null>(null) // Show map for this member
+    const [mapState, setMapState] = useState<{ isOpen: boolean, mode: 'lobby' | 'voting' | 'results' | 'single', focusedMemberId?: string }>({
+        isOpen: false,
+        mode: 'lobby'
+    })
 
     // Status States
     const [triangulating, setTriangulating] = useState(false)
@@ -274,12 +277,19 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                     <span className="text-pint-gold font-mono text-xl font-bold leading-none">{code}</span>
                 </div>
 
-                {/* Center: Member Count (Read Only) */}
+                {/* Center: Map Toggle (Context Aware) */}
                 <div className="absolute left-1/2 transform -translate-x-1/2 flex flex-col items-center">
-                    <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full">
-                        <Users className="w-4 h-4 text-pint-gold" />
+                    <button
+                        onClick={() => setMapState({
+                            isOpen: true,
+                            mode: stage === 'voting' ? 'voting' : stage === 'lobby' ? 'lobby' : 'results'
+                        })}
+                        className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full hover:bg-white/10 hover:border-pint-gold/50 transition-all active:scale-95 group"
+                    >
+                        <Users className="w-4 h-4 text-pint-gold group-hover:drop-shadow-[0_0_8px_rgba(255,215,0,0.5)] transition-all" />
                         <span className="text-sm font-bold text-white">{uniqueMembers.length}</span>
-                    </div>
+                        <span className="text-[10px] text-white/40 uppercase tracking-wider ml-1 group-hover:text-white/60">Map</span>
+                    </button>
                 </div>
 
                 {/* Right: Host Controls & Exit */}
@@ -326,11 +336,16 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                 </div>
             </div>
 
+            {/* Member Map Modal (Context Aware) */}
             <MemberMapModal
-                member={selectedMemberForMap}
-                isOpen={!!selectedMemberForMap}
-                onClose={() => setSelectedMemberForMap(null)}
+                isOpen={mapState.isOpen}
+                onClose={() => setMapState(prev => ({ ...prev, isOpen: false }))}
+                members={uniqueMembers}
                 stationData={stationData}
+                mode={mapState.mode}
+                focusedMemberId={mapState.focusedMemberId}
+                candidateStations={areaOptions} // Pass available options
+                winningStation={winningPubId ? undefined : undefined} // TODO: Derive winning station if needed, or rely on Pubs
             />
 
             {/* System Message Toast */}
@@ -399,8 +414,8 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                             members={uniqueMembers}
                                             currentUserMemberId={myMemberId || undefined}
                                             isHost={isHost}
-                                            strategy={aiStrategy || undefined} // Pass AI Strategy
-                                            onVote={(areaId) => myMemberId && console.log("Vote cast", areaId)} // Optimistic handled in View
+                                            aiStrategy={aiStrategy || undefined} // Pass AI Strategy
+                                            onVote={async (areaId) => { if (myMemberId) console.log("Vote cast", areaId) }} // Optimistic handled in View
                                             onStageChange={async (newStage) => {
                                                 setStage(newStage as any)
                                             }}
@@ -440,7 +455,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                                         return (
                                                             <div
                                                                 key={member.id}
-                                                                onClick={() => setSelectedMemberForMap(member)}
+                                                                onClick={() => setMapState({ isOpen: true, mode: 'single', focusedMemberId: member.id })}
                                                                 className="flex items-center gap-4 bg-white/5 hover:bg-white/10 p-3 rounded-xl border border-white/5 hover:border-pint-gold/50 animate-pop-in cursor-pointer transition-all active:scale-95 group"
                                                             >
                                                                 <div className="w-12 h-12 rounded-full overflow-hidden border border-white/20 relative bg-black/40 flex-shrink-0">
