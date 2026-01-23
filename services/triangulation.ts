@@ -194,7 +194,7 @@ export const triangulationService = {
     },
 
     // 2. MAIN: AI Scout -> Reality -> Judge Pipeline
-    findBestStations: async (members: PartyMember[], meetingTime?: string): Promise<any[]> => {
+    findBestStations: async (members: PartyMember[], meetingTime?: string): Promise<{ strategy: string, recommendations: any[] }> => {
         console.log("Starting AI Triangulation...");
 
         // A. Resolve Locations
@@ -224,12 +224,15 @@ export const triangulationService = {
         }));
 
         const activeMembers = resolvedMembers.filter(m => m.status === 'ready' && m.location);
-        if (activeMembers.length === 0) return [];
+        if (activeMembers.length === 0) return { strategy: "No active members found.", recommendations: [] };
 
         // B. Context Building
         const context = activeMembers.map(m =>
             `- ${m.name}: Starts at ${m.startName}, Ends at ${m.endName}`
         ).join('\n');
+
+        // B1. GLOBAL STRATEGY (Transparency)
+        let strategy = await gemini.generateStrategyNarrative(context);
 
         // C. SCOUT (Gemini)
         let candidates: any[] = [];
@@ -260,41 +263,44 @@ export const triangulationService = {
         // FALLBACK: If AI returned nothing valid (or failed), use Math Shortlist
         if (candidates.length < 3) {
             console.log("AI Scout yielded too few results. Fallback to Math.");
-            // We invoke the math version but we need to ensure the types match 
-            // findBestStationsMath returns the formatted FINAL object, whereas we are in the middle of processing.
-            // Actually, findBestStationsMath returns Promise<any[]> (the final result).
-            // So we can just return it directly!
-            return triangulationService.findBestStationsMath(members);
+            strategy += " (AI Scout unavailable, falling back to mathematical centroid).";
+            // We invoke the math version and wrap it
+            const mathResults = await triangulationService.findBestStationsMath(members);
+            return { strategy, recommendations: mathResults };
         }
 
         // D. REALITY CHECK (TfL Race)
         const scoredStations = await Promise.all(candidates.slice(0, 10).map(async (station) => {
             let totalTime = 0;
             let maxTotalTime = 0;
-            const travelTimes: Record<string, { to: number, home: number }> = {};
+            const travelTimes: Record<string, { to: number, home: number, summary?: string }> = {};
 
             const journeyPromises = activeMembers.map(async (member) => {
-                const durationTo = await transportService.getJourneyDuration(member.location!, { lat: station.lat, lng: station.lng });
+                const detailsTo = await transportService.getJourneyDetails(member.location!, { lat: station.lat, lng: station.lng });
+                const durationTo = detailsTo?.duration || 0;
+                const summaryTo = detailsTo?.summary || "Direct";
 
                 // Estimate Return
                 let durationHome = durationTo;
                 // If end location is significantly different
                 if (member.endLocation && (Math.abs(member.location!.lat - member.endLocation.lat) > 0.001 || Math.abs(member.location!.lng - member.endLocation.lng) > 0.001)) {
-                    durationHome = await transportService.getJourneyDuration({ lat: station.lat, lng: station.lng }, member.endLocation) || durationTo;
+                    const params = await transportService.getJourneyDetails({ lat: station.lat, lng: station.lng }, member.endLocation);
+                    durationHome = params?.duration || durationTo;
                 }
 
                 return {
                     id: member.id,
                     name: member.name,
-                    to: durationTo || 0,
-                    home: durationHome || 0
+                    to: durationTo,
+                    home: durationHome,
+                    summary: summaryTo
                 };
             });
 
             const results = await Promise.all(journeyPromises);
 
             results.forEach(res => {
-                travelTimes[res.name] = { to: res.to, home: res.home };
+                travelTimes[res.name] = { to: res.to, home: res.home, summary: res.summary };
                 const personTotal = res.to + res.home;
                 totalTime += personTotal;
                 if (personTotal > maxTotalTime) maxTotalTime = personTotal;
@@ -330,7 +336,7 @@ export const triangulationService = {
         }
 
         // F. FORMAT FINAL RESULT
-        return topCandidates.slice(0, 3).map(s => {
+        const recommendations = topCandidates.slice(0, 3).map(s => {
             const isWinner = aiverdict && s.name === aiverdict.winner_name;
             const rationale = isWinner ? aiverdict.rationale : (aiverdict?.rankings?.includes(s.name) ? "Strategic option." : "Good alternatives.");
 
@@ -351,6 +357,8 @@ export const triangulationService = {
                 }
             };
         });
+
+        return { strategy, recommendations };
     },
 
     // 2. MATH FALLBACK: Find Best Stations (The "Station-First" Logical Core)
@@ -416,7 +424,8 @@ export const triangulationService = {
 
             const journeyPromises = activeMembers.map(async (member) => {
                 // 1. To Venue
-                const durationTo = await transportService.getJourneyDuration(member.location!, { lat: station.lat, lng: station.lng });
+                const detailsTo = await transportService.getJourneyDetails(member.location!, { lat: station.lat, lng: station.lng });
+                const durationTo = detailsTo?.duration || 0;
 
                 // 2. To Home (Venue -> EndLoc)
                 let durationHome = durationTo;
@@ -424,7 +433,8 @@ export const triangulationService = {
                 const isDifferent = Math.abs(member.location!.lat - member.endLocation!.lat) > 0.001 || Math.abs(member.location!.lng - member.endLocation!.lng) > 0.001;
 
                 if (isDifferent) {
-                    durationHome = await transportService.getJourneyDuration({ lat: station.lat, lng: station.lng }, member.endLocation!) || durationTo;
+                    const params = await transportService.getJourneyDetails({ lat: station.lat, lng: station.lng }, member.endLocation!);
+                    durationHome = params?.duration || durationTo;
                 }
 
                 return {

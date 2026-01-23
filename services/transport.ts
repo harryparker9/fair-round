@@ -8,10 +8,9 @@ const BASE_URL = 'https://api.tfl.gov.uk';
 
 export const transportService = {
     /**
-     * Get the fastest journey duration in minutes between two points using TfL API.
-     * This is "physically accurate" for London (includes walking, interchanges, engineering works).
+     * Get the fastest journey details (duration + summary) between two points using TfL API.
      */
-    getJourneyDuration: async (from: Coordinates, to: Coordinates): Promise<number | null> => {
+    getJourneyDetails: async (from: Coordinates, to: Coordinates): Promise<{ duration: number, summary: string } | null> => {
         try {
             // Format: "lat,lng"
             const fromStr = `${from.lat},${from.lng}`;
@@ -42,7 +41,19 @@ export const transportService = {
             const bestJourney = data.journeys[0];
 
             // 2. Extract duration (in minutes)
-            return bestJourney.duration;
+            const duration = bestJourney.duration;
+
+            // 3. Construct Summary (e.g. "Walk (10m) > Northern (15m)")
+            const legs = bestJourney.legs.map((leg: any) => {
+                const mode = leg.mode.name === 'walking' ? 'Walk' : (leg.routeOptions?.[0]?.name || leg.mode.name);
+                const time = leg.duration;
+                return `${mode} (${time}m)`;
+            });
+
+            return {
+                duration: duration,
+                summary: legs.join(' → ')
+            };
 
         } catch (error) {
             console.error("Transport Service Error:", error);

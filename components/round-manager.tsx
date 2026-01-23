@@ -43,6 +43,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
     const [roundHostId, setRoundHostId] = useState<string | null>(null)
     const [winningPubId, setWinningPubId] = useState<string | null>(null)
     const [systemMessage, setSystemMessage] = useState<string | null>(null)
+    const [aiStrategy, setAiStrategy] = useState<string | null>(null)
     const lastSystemMessage = useRef<string | null>(null)
 
     // Data Helpers
@@ -107,6 +108,10 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                     setWinningPubId(roundData.settings.winning_pub_id)
                 }
 
+                if (roundData.settings?.ai_strategy) {
+                    setAiStrategy(roundData.settings.ai_strategy)
+                }
+
                 // Set initial message only if new
                 if (roundData.settings?.system_message && roundData.settings.system_message !== lastSystemMessage.current) {
                     setSystemMessage(roundData.settings.system_message)
@@ -151,6 +156,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
 
                     if (newRound.area_options) setAreaOptions(newRound.area_options)
                     if (newRound.settings?.winning_pub_id) setWinningPubId(newRound.settings.winning_pub_id)
+                    if (newRound.settings?.ai_strategy) setAiStrategy(newRound.settings.ai_strategy)
 
                     if (newRound.settings?.system_message && newRound.settings.system_message !== lastSystemMessage.current) {
                         setSystemMessage(newRound.settings.system_message)
@@ -393,6 +399,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                             members={uniqueMembers}
                                             currentUserMemberId={myMemberId || undefined}
                                             isHost={isHost}
+                                            strategy={aiStrategy || undefined} // Pass AI Strategy
                                             onVote={(areaId) => myMemberId && console.log("Vote cast", areaId)} // Optimistic handled in View
                                             onStageChange={async (newStage) => {
                                                 setStage(newStage as any)

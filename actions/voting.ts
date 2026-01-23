@@ -21,7 +21,7 @@ export async function startAreaVoting(roundId: string) {
         const meetingTime = round?.settings?.meeting_time || undefined;
 
         // Generate Options (Gemini + Distance Matrix)
-        const options = await triangulationService.findBestStations(members, meetingTime)
+        const { strategy, recommendations } = await triangulationService.findBestStations(members, meetingTime)
 
         // Update Round: save options and move to 'voting' stage
         const db = supabaseAdmin || supabase; // Prefer admin
@@ -29,12 +29,13 @@ export async function startAreaVoting(roundId: string) {
             .from('rounds')
             .update({
                 stage: 'voting',
-                area_options: options
+                area_options: recommendations,
+                settings: { ...round?.settings, ai_strategy: strategy } // Save Global Strategy
             })
             .eq('id', roundId)
 
         if (error) throw error
-        return { success: true, options }
+        return { success: true, options: recommendations }
     } catch (e: any) {
         console.error("Area Voting Error:", e)
         return { success: false, error: e.message || "Unknown error" }

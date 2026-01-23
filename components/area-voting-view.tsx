@@ -13,11 +13,12 @@ interface AreaVotingViewProps {
     members: PartyMember[]
     currentUserMemberId?: string
     isHost: boolean
+    strategy?: string // New: Global AI Strategy
     onVote?: (areaId: string) => void // Callback with areaId for optimistic update
     onStageChange?: (stage: 'results') => void
 }
 
-export function AreaVotingView({ roundId, options, members, currentUserMemberId, isHost, onVote, onStageChange }: AreaVotingViewProps) {
+export function AreaVotingView({ roundId, options, members, currentUserMemberId, isHost, strategy, onVote, onStageChange }: AreaVotingViewProps) {
     const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null)
     const [expandedAreaId, setExpandedAreaId] = useState<string | null>(null)
     const [isFinalizing, setIsFinalizing] = useState(false)
@@ -85,6 +86,16 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
                 <h2 className="text-3xl font-bold text-white tracking-wide">Vote for Area</h2>
                 <p className="text-white/60">Choose the best neighborhood for the group.</p>
             </div>
+
+            {/* AI STRATEGY CARD (Transparency UI) */}
+            {strategy && (
+                <div className="bg-pint-gold/10 border border-pint-gold/20 p-4 rounded-xl flex gap-3 items-start animate-fade-in-up">
+                    <div className="bg-pint-gold text-charcoal text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider mt-0.5 shrink-0">
+                        AI Strategist
+                    </div>
+                    <p className="text-sm text-pint-gold font-medium italic leading-relaxed">"{strategy}"</p>
+                </div>
+            )}
 
             <div className="flex flex-col gap-4">
                 {options.map((area, index) => {
@@ -201,10 +212,19 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
 
                                     <div className="space-y-2">
                                         <h4 className="text-xs font-bold text-white/40 uppercase">Full Breakdown</h4>
-                                        <div className="grid grid-cols-2 gap-2">
+                                        <div className="grid grid-cols-1 gap-2">
                                             {Object.entries(area.travel_times).map(([memberName, time]) => (
-                                                <div key={memberName} className="flex justify-between items-center bg-white/5 px-2 py-1 rounded">
-                                                    <span className="text-xs text-white/80">{memberName}</span>
+                                                <div key={memberName} className="flex justify-between items-start bg-white/5 px-2 py-2 rounded">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-bold text-white/90">{memberName}</span>
+                                                        {/* JOURNEY SUMMARY (The new detail) */}
+                                                        {time.summary ? (
+                                                            <span className="text-[10px] text-white/50">{time.summary}</span>
+                                                        ) : (
+                                                            <span className="text-[10px] text-white/30">Direct connection</span>
+                                                        )}
+                                                    </div>
+
                                                     <div className="flex items-center gap-2">
                                                         <div className="flex flex-col items-end leading-none">
                                                             <span className={cn(

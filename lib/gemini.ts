@@ -71,6 +71,32 @@ export const gemini = {
             return [];
         }
     },
+    // 2. STRATEGY NARRATIVE (Transparency)
+    generateStrategyNarrative: async (context: string): Promise<string> => {
+        if (!apiKey) return "Strategic optimization based on user locations.";
+
+        const prompt = `
+        You are the Fairness Engine for a London meetup app.
+        OBJECTIVE: Briefly summarize your "Thinking Process" for finding a meeting point.
+        
+        CONTEXT:
+        ${context}
+        
+        OUTPUT:
+        Write 2-3 short, professional but friendly sentences explaining your global strategy. 
+        Example: "I determined that 3 people are in South London, so I pulled the center southwards. I'm looking for Northern Line hubs to minimize transfers for Harry."
+        Do NOT mention specific station candidates yet. Focus on the STRATEGY.
+        `;
+
+        try {
+            const result = await model.generateContent(prompt);
+            return result.response.text().trim();
+        } catch (error) {
+            console.error("Gemini Strategy Error:", error);
+            return "Strategy generation failed. Proceeding with standard optimization.";
+        }
+    },
+
     // 3. SCOUT: Generate Strategic Candidates
     scoutStations: async (context: string, meetingTime: string): Promise<string[]> => {
         if (!apiKey) return [];
