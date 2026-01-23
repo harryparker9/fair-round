@@ -635,8 +635,10 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                     </div>
                                 </div>
                             )
-                        }
+                        })()}
+                    </>
+                )}
             </div>
-            </div>
-            )
+        </div>
+    )
 }
