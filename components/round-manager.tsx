@@ -36,7 +36,6 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
     })
 
     // Status States
-    const [triangulating, setTriangulating] = useState(false)
     const [generatingAreas, setGeneratingAreas] = useState(false)
 
     // Data States
@@ -277,48 +276,6 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                 <div className="flex flex-col">
                     <span className="text-[10px] text-white/50 uppercase tracking-wider">Round Code</span>
                     <span className="text-pint-gold font-mono text-xl font-bold leading-none">{code}</span>
-                </div>
-
-                {/* Center: Stage Runner (Read Only Review) */}
-                <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-1">
-                    {[
-                        { id: 'lobby', label: 'Lobby' },
-                        { id: 'voting', label: 'Area' },
-                        { id: 'pub_voting', label: 'Pubs' },
-                        { id: 'results', label: 'Result' }
-                    ].map((s, idx) => {
-                        // Logic: 
-                        // Active = Current Real Stage
-                        // Viewing = If viewingStage is set
-                        // Clickable = If stage is past/current
-
-                        const isCurrentReal = stage === s.id
-                        const isViewing = viewingStage === s.id || (!viewingStage && isCurrentReal)
-
-                        // We can only view past stages or current
-                        const stages = ['lobby', 'voting', 'pub_voting', 'results']
-                        const currentIdx = stages.indexOf(stage)
-                        const thisIdx = stages.indexOf(s.id)
-                        const isPast = thisIdx <= currentIdx
-
-                        return (
-                            <button
-                                key={s.id}
-                                disabled={!isPast}
-                                onClick={() => isPast && setViewingStage(s.id as any)}
-                                className={cn(
-                                    "flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all text-xs font-bold uppercase tracking-wider",
-                                    isViewing
-                                        ? "bg-pint-gold text-charcoal border-pint-gold shadow-[0_0_15px_rgba(255,215,0,0.4)]"
-                                        : isPast
-                                            ? "bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white"
-                                            : "opacity-30 border-transparent cursor-not-allowed"
-                                )}
-                            >
-                                {s.label}
-                            </button>
-                        )
-                    })}
                 </div>
 
                 {/* Center: Map Toggle (Context Aware) */}
