@@ -227,7 +227,7 @@ export const triangulationService = {
         if (activeMembers.length === 0) return { strategy: "No active members found.", recommendations: [] };
 
         // B. Context Building
-        const context = activeMembers.map(m =>
+        const context = `Active Members: ${activeMembers.length}\n` + activeMembers.map(m =>
             `- ${m.name}: Starts at ${m.startName}, Ends at ${m.endName}`
         ).join('\n');
 

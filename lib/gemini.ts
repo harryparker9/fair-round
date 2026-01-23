@@ -84,12 +84,14 @@ export const gemini = {
         
         OUTPUT:
         Write 2-3 short, specific sentences explaining your global strategy.
-        CRITICAL: YOU MUST MENTION SPECIFIC PEOPLE AND LOCATIONS.
+        
+        CRITICAL RULES:
+        1. Use ONLY the names and locations provided in the CONTEXT. Do NOT invent people.
+        2. If there is only 1 person, acknowledge that (e.g., "Since there is only Member A...").
+        3. Do NOT mention specific station candidates yet. Focus on the STRATEGY (Direction, Lines, compromise).
         
         Bad Example: "I looked for a central hub that serves everyone equally." (Too vague)
-        Good Example: "Because Harry is in Angel and Tom is in Brixton, I pulled the search center towards the Victoria Line. I'm prioritizing hubs like Stockwell to minimize changes for everyone."
-        
-        Do NOT mention specific station candidates yet (e.g. dont say "I chose Waterloo"). Focus on the STRATEGY (Direction, Lines, compromise).
+        Good Example: "Because [Member A] is in North London and [Member B] is in South London, I pulled the search center towards the Victoria Line to minimize changes."
         `;
 
         try {
@@ -161,7 +163,8 @@ export const gemini = {
         RULES:
         1. Winner: Best balance of time and fairness (avoid >90m trips).
         2. Rationale: For EVERY candidate, write 1 short, witty, specific sentence explaining its pros/cons.
-           - Mention specific people (e.g. "Good for Harry, but bad for Tom").
+           - RELY ONLY ON THE CONTEXT. Do not invent people named Brenda, Tom, etc.
+           - Mention specific people from the Context if relevant (e.g. "Good for [Member Name], but bad for [Member Name]").
            - NOT generic (e.g. "Good option"). Be specific!
 
         OUTPUT JSON:
