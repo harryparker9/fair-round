@@ -469,9 +469,21 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                             currentUserMemberId={myMemberId || undefined}
                                             isHost={isHost}
                                             aiStrategy={aiStrategy || undefined} // Pass AI Strategy
-                                            onVote={async (areaId) => { if (myMemberId && !isReview) console.log("Vote cast", areaId) }}
-                                            onStageChange={async (newStage) => {
-                                                if (!isReview) setStage(newStage as any)
+                                            onVote={async (areaId) => {
+                                                if (myMemberId && !isReview) {
+                                                    await castVote(myMemberId, areaId)
+                                                }
+                                            }}
+                                            onStageChange={async (newStage, winningAreaId) => {
+                                                if (!isHost || isReview) return
+                                                if (newStage === 'pub_voting' && winningAreaId) {
+                                                    setGeneratingAreas(true)
+                                                    try {
+                                                        await finalizeVoting(roundId, winningAreaId)
+                                                    } finally {
+                                                        setGeneratingAreas(false)
+                                                    }
+                                                }
                                             }}
                                         />
                                         {isReview && <div className="absolute inset-0 bg-transparent z-10 pointer-events-none" />}
