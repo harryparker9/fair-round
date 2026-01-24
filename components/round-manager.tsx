@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, Dialog
 import { ResultsView } from '@/components/results-view'
 import { PubRecommendation, AreaOption } from '@/types'
 import { supabase } from '@/lib/supabase'
-import { startAreaVoting, endRound, regressStage, updatePartyMember } from '@/actions/voting'
+import { startAreaVoting, endRound, regressStage, updatePartyMember, castVote, finalizeVoting } from '@/actions/voting'
 import { AreaVotingView } from '@/components/area-voting-view'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
@@ -335,22 +335,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                         </Dialog>
                     )}
 
-                    {/* Host Back Button */}
-                    {isHost && stage !== 'lobby' && (
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={async () => {
-                                if (confirm("Go back to previous stage? This might reset some progress.")) {
-                                    // @ts-ignore
-                                    await regressStage(roundId, stage)
-                                }
-                            }}
-                            className="text-xs h-8 bg-pint-gold/10 text-pint-gold border border-pint-gold/30 hover:bg-pint-gold/20"
-                        >
-                            ← Go Back
-                        </Button>
-                    )}
+
 
                     <Button
                         variant="ghost"

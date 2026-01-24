@@ -23,7 +23,7 @@ interface AreaVotingViewProps {
     currentUserMemberId?: string
     isHost?: boolean
     onVote: (areaId: string) => Promise<void>
-    onStageChange: (newStage: 'pub_voting') => Promise<void>
+    onStageChange: (newStage: 'pub_voting', winningAreaId?: string) => Promise<void>
     aiStrategy?: string // New: Global Narrative
 }
 
@@ -55,7 +55,7 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
         // BUT, if host overrides, we might need a specific "Pick this" action.
         // Let's assume the highest voted is picked automatically OR host picks. 
         // Let's act as if clicking "Lock In" confirms the current Leader.
-        await onStageChange('pub_voting')
+        await onStageChange('pub_voting', areaId)
     }
 
     // Sort options by fairness score or vote count?
