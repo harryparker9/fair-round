@@ -37,7 +37,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
 
     // UI State
     const [viewingStage, setViewingStage] = useState<'lobby' | 'voting' | 'pub_voting' | 'results' | null>(null)
-    const [mapState, setMapState] = useState<{ isOpen: boolean, mode: 'all' | 'single', focusedMemberId?: string }>({ isOpen: false, mode: 'all' })
+    const [mapState, setMapState] = useState<{ isOpen: boolean, mode: 'lobby' | 'voting' | 'results' | 'single', focusedMemberId?: string }>({ isOpen: false, mode: 'lobby' })
     const [isEditingSettings, setIsEditingSettings] = useState(false)
     const [showSearchPrefs, setShowSearchPrefs] = useState(false)
     const [pendingWinningAreaId, setPendingWinningAreaId] = useState<string | null>(null)
