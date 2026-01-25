@@ -619,7 +619,6 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                         })()}
                     </>
                 )}
-                )}
             </div>
 
             <SearchPreferencesModal
