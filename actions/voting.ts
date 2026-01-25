@@ -207,3 +207,51 @@ export async function updatePartyMember(roundId: string, memberId: string, data:
 
     return { success: true, regressed: false }
 }
+
+// 8. Delete Party Member (Kick)
+export async function deletePartyMember(roundId: string, memberId: string) {
+    const db = supabaseAdmin || supabase;
+
+    const { error } = await db
+        .from('party_members')
+        .delete()
+        .eq('id', memberId)
+        .eq('round_id', roundId)
+
+    if (error) throw error
+    return { success: true }
+}
+
+// 9. Join Round with Auto-Reset
+export async function joinRoundWithReset(roundId: string, name: string, photoPath?: string) {
+    const db = supabaseAdmin || supabase;
+
+    // 1. Check current stage
+    const { data: round } = await db.from('rounds').select('stage, settings').eq('id', roundId).single()
+
+    // 2. Insert Member
+    const { data: member, error } = await db
+        .from('party_members')
+        .insert({
+            round_id: roundId,
+            name,
+            photo_path: photoPath,
+            status: 'pending',
+            transport_mode: 'walking'
+        })
+        .select()
+        .single()
+
+    if (error) throw error
+
+    // 3. Reset if needed
+    if (round && round.stage !== 'lobby') {
+        await db.from('rounds').update({
+            stage: 'lobby',
+            area_options: [],
+            settings: { ...round.settings, system_message: `${name} joined. Returning to lobby.` }
+        }).eq('id', roundId)
+    }
+
+    return { success: true, member }
+}

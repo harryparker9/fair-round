@@ -6,7 +6,31 @@ import { SelfieCapture } from '@/components/selfie-capture'
 import { supabase } from '@/lib/supabase'
 import { identifyLocation, geocodeAddress } from '@/actions/location'
 import { searchStations } from '@/actions/stations'
-import { updatePartyMember } from '@/actions/voting'
+import { updatePartyMember, joinRoundWithReset } from '@/actions/voting'
+// ... (start of component)
+
+if (memberId) {
+    // Already identified
+} else {
+    // INSERT via Server Action to trigger reset logic
+    try {
+        // @ts-ignore
+        const res = await joinRoundWithReset(roundId, name.trim(), photoPath)
+        if (res && res.member) {
+            memberId = res.member.id
+        }
+    } catch (e) {
+        // Fallback if needed, but should work
+        console.error("Join action failed", e)
+    }
+}
+
+if (memberId) {
+    localStorage.setItem(`fair-round-member-id-${roundId}`, memberId)
+    localStorage.setItem(`fair-round-joined-${roundId}`, 'true')
+}
+
+onJoin()
 import { MapPin, Train, RefreshCw, Home, Map as MapIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MapPicker } from '@/components/map-picker'
@@ -262,13 +286,24 @@ export function JoinRoundForm({ roundId, existingMembers = [], onJoin, initialDa
                 let memberId = existingMember?.id
 
                 if (!memberId) {
-                    const { data: newMember, error } = await supabase
-                        .from('party_members')
-                        .insert([payload])
-                        .select()
-                        .single()
-                    if (error) throw error
-                    memberId = newMember.id
+                    try {
+                        // @ts-ignore
+                        const res = await joinRoundWithReset(roundId, name.trim(), photoPath)
+                        if (res && res.member) {
+                            memberId = res.member.id
+                            // If returned member ID, we also need to update their location details 
+                            // because joinRoundWithReset only does basic insert
+                            // So we do a quick update with the full payload
+                            // This might be double round trip but ensures consistency without refactoring entire action signature right now
+                            // Actually, let's just make sure joinRoundWithReset can take everything, or we update after.
+                            // Better: We update immediately after.
+                            // @ts-ignore
+                            await updatePartyMember(roundId, memberId, payload)
+                        }
+                    } catch (e) {
+                        console.error(e)
+                        throw e
+                    }
                 }
 
                 if (memberId) {

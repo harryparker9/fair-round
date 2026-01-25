@@ -122,7 +122,7 @@ export function MemberMapModal({ members, isOpen, onClose, stationData, mode, fo
                                             </div>
                                             {/* Image */}
                                             {member.photo_path && (
-                                                <img src={`https://supabase_url_placeholder/storage/v1/object/public/avatars/${member.photo_path}`} className="w-full h-full object-cover relative z-10" />
+                                                <img src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/temporary_selfies/${member.photo_path}`} className="w-full h-full object-cover relative z-10 transform scale-x-[-1]" />
                                             )}
                                         </div>
                                     </div>
