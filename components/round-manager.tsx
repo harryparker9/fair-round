@@ -47,15 +47,12 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
     // Status States
     const [generatingAreas, setGeneratingAreas] = useState(false)
 
-    // Data States
+    // State
     const [stage, setStage] = useState<'lobby' | 'voting' | 'pub_voting' | 'results'>('lobby')
-    const [viewingStage, setViewingStage] = useState<'lobby' | 'voting' | 'pub_voting' | 'results' | null>(null) // Review Mode
     const [roundStatus, setRoundStatus] = useState<string>('active')
     const [areaOptions, setAreaOptions] = useState<AreaOption[]>([])
-    const [members, setMembers] = useState<any[]>([])
     const [roundHostId, setRoundHostId] = useState<string | null>(null)
     const [winningPubId, setWinningPubId] = useState<string | null>(null)
-    const [systemMessage, setSystemMessage] = useState<string | null>(null)
     const [aiStrategy, setAiStrategy] = useState<string | null>(null)
     const lastSystemMessage = useRef<string | null>(null)
 
