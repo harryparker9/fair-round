@@ -436,6 +436,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                         recommendations={winningPubId
                                             ? recommendations.filter(r => r.place_id === winningPubId)
                                             : recommendations}
+                                        members={uniqueMembers}
                                     />
                                 ) : <p className="text-white">Loading Results...</p>
                             }

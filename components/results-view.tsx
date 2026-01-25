@@ -1,21 +1,86 @@
 'use client'
 
-import { PubRecommendation } from "@/types"
+import { useRef, useState } from "react"
+import { PubRecommendation, PartyMember } from "@/types"
 import { Card } from "./ui/card"
 import { Button } from "./ui/button"
 import { motion } from "framer-motion"
+import { ResultsTicket } from "./results-ticket"
+import { toPng } from 'html-to-image'
+import { Share2, Download, Loader2 } from "lucide-react"
 
 interface ResultsViewProps {
     recommendations: PubRecommendation[]
+    members?: PartyMember[]
 }
 
-export function ResultsView({ recommendations }: ResultsViewProps) {
+export function ResultsView({ recommendations, members = [] }: ResultsViewProps) {
+    const ticketRef = useRef<HTMLDivElement>(null)
+    const [isSharing, setIsSharing] = useState(false)
+
+    const handleShare = async () => {
+        if (!ticketRef.current) return
+        setIsSharing(true)
+
+        try {
+            // Generate Image
+            const dataUrl = await toPng(ticketRef.current, { cacheBust: true, pixelRatio: 2 })
+
+            // Convert to Blob
+            const res = await fetch(dataUrl)
+            const blob = await res.blob()
+            const file = new File([blob], 'fair-round-result.png', { type: 'image/png' })
+
+            // Share API
+            if (navigator.share && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: 'Our Fair Round Winner',
+                    text: `We're heading to ${recommendations[0].name}!`,
+                })
+            } else {
+                // Fallback Download
+                const link = document.createElement('a')
+                link.download = 'fair-round-result.png'
+                link.href = dataUrl
+                link.click()
+            }
+        } catch (e) {
+            console.error("Share failed", e)
+            alert("Could not generate image. Try screenshotting instead!")
+        } finally {
+            setIsSharing(false)
+        }
+    }
+
     return (
         <div className="w-full max-w-lg flex flex-col gap-6 p-4">
             <div className="text-center space-y-2 animate-fade-in-up">
                 <h2 className="text-3xl font-bold text-white">The Verdict</h2>
                 <p className="text-white/60">Here are the fairest spots for your group.</p>
             </div>
+
+            {/* Hidden Ticket for Generation */}
+            <div className="absolute top-[-9999px] left-[-9999px]">
+                {recommendations[0] && (
+                    <div className="w-[400px]">
+                        <ResultsTicket ref={ticketRef} pub={recommendations[0]} members={members} />
+                    </div>
+                )}
+            </div>
+
+            {/* Primary Action: Share */}
+            {recommendations[0] && (
+                <Button
+                    variant="outline"
+                    onClick={handleShare}
+                    disabled={isSharing}
+                    className="w-full border-pint-gold/50 text-pint-gold hover:bg-pint-gold/10 gap-2"
+                >
+                    {isSharing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
+                    {isSharing ? "Generating..." : "Share Result Card"}
+                </Button>
+            )}
 
             <div className="flex flex-col gap-4">
                 {recommendations.map((pub, index) => (
