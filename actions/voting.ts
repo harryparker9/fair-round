@@ -56,6 +56,21 @@ export async function castVote(memberId: string, areaId: string) {
     }
 }
 
+// 2b. Member votes for a Pub
+export async function castPubVote(memberId: string, pubId: string) {
+    const { data, error } = await supabase
+        .from('party_members')
+        .update({ vote_pub_id: pubId })
+        .eq('id', memberId)
+        .select()
+
+    if (error) throw error
+    // If column doesn't exist, this will throw.
+    if (!data || data.length === 0) {
+        throw new Error(`Vote failed: Member ID ${memberId} not found or permission denied.`)
+    }
+}
+
 // 3. Host finalizes the vote -> Moves to results
 export async function finalizeVoting(roundId: string, winningAreaId: string, filters: string[] = [], radius: number = 800) {
     try {

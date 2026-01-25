@@ -466,7 +466,13 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                         // @ts-ignore
                                         round={{ id: roundId }}
                                         currentUserId={myUserId || ''}
-                                        onVote={() => { if (!isReview) { } }} // Disable in review
+                                        members={uniqueMembers}
+                                        onVote={async (pubId) => {
+                                            if (!isReview && myMemberId) {
+                                                // @ts-ignore
+                                                await import('@/actions/voting').then(mod => mod.castPubVote(myMemberId, pubId))
+                                            }
+                                        }}
                                         onConfirmWinner={async (pid) => { if (!isReview) handleConfirmPub(pid) }}
                                         isHost={isHost}
                                         readOnly={isReview}
@@ -615,7 +621,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                                 onClick={handleStartVoting}
                                                 disabled={generatingAreas || uniqueMembers.length === 0}
                                             >
-                                                {generatingAreas ? 'AI is Thinking...' : 'Calculate Options'}
+                                                {generatingAreas ? <div className="py-1"><LoadingNarrative active={true} /></div> : 'Calculate Options'}
                                             </Button>
                                         ) : (
                                             <div className="p-3 bg-white/5 rounded-lg w-full">

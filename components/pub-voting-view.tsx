@@ -1,145 +1,242 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { PubRecommendation, Round } from '@/types'
-import { MapPin, Star, Clock, Beer } from 'lucide-react'
+import { PubRecommendation, Round, PartyMember } from '@/types'
+import { MapPin, Star, ThumbsUp } from 'lucide-react'
 import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps'
+import { cn } from '@/lib/utils'
 
 interface PubVotingViewProps {
     pubs: PubRecommendation[]
     round: Round
     currentUserId: string // from localStorage
+    members?: PartyMember[]
     onVote: (pubId: string) => void
     onConfirmWinner: (pubId: string) => void // HOST only
     isHost: boolean
     readOnly?: boolean
 }
 
-export function PubVotingView({ pubs, round, currentUserId, onVote, onConfirmWinner, isHost, readOnly }: PubVotingViewProps) {
-    const [selectedPubId, setSelectedPubId] = useState<string | null>(null)
+export function PubVotingView({ pubs, round, currentUserId, members = [], onVote, onConfirmWinner, isHost, readOnly }: PubVotingViewProps) {
+    const [selectedPubId, setSelectedPubId] = useState<string | null>(pubs[0]?.place_id || null)
+    const [viewMode, setViewMode] = useState<'carousel' | 'grid'>('carousel')
+    const carouselRef = useRef<HTMLDivElement>(null)
 
-    // Center map on the first pub or average
-    const defaultCenter = pubs.length > 0 ? pubs[0].location : { lat: 51.5074, lng: -0.1278 }
+    // Current User's Member ID
+    const myMember = members.find(m => m.user_id === currentUserId || localStorage.getItem(`fair-round-member-id-${round.id}`) === m.id)
+    const myMemberId = myMember?.id
 
-    const handleHostConfirm = () => {
-        if (!selectedPubId) return
-        onConfirmWinner(selectedPubId)
+    // Center map on the selected pub
+    const selectedPub = pubs.find(p => p.place_id === selectedPubId) || pubs[0]
+    const mapCenter = selectedPub?.location || { lat: 51.5074, lng: -0.1278 }
+
+    // Vote Counts
+    const votes: Record<string, PartyMember[]> = {}
+    members.forEach(m => {
+        if (m.vote_pub_id) {
+            if (!votes[m.vote_pub_id]) votes[m.vote_pub_id] = []
+            votes[m.vote_pub_id].push(m)
+        }
+    })
+
+    const handleScroll = () => {
+        if (!carouselRef.current) return
+        const scrollLeft = carouselRef.current.scrollLeft
+        const width = carouselRef.current.offsetWidth
+        const index = Math.round(scrollLeft / (width * 0.85)) // Assuming card width is ~85%
+        if (pubs[index] && pubs[index].place_id !== selectedPubId) {
+            // We could auto-select, but that might jitter the map. 
+            // Better to let user CLICK to select, or select on snap stop.
+            // For now, let's keep it simple: Click map = scroll there. Scroll = just view.
+        }
     }
 
+    const scrollToPub = (pubId: string) => {
+        setSelectedPubId(pubId)
+        const index = pubs.findIndex(p => p.place_id === pubId)
+        if (index !== -1 && carouselRef.current) {
+            const width = carouselRef.current.offsetWidth
+            // Card width + Gap. Card is w-[85%] -> width * 0.85
+            const cardWidth = width * 0.85
+            const gap = 16 // 4 rem roughly
+            carouselRef.current.scrollTo({
+                left: index * (cardWidth + 12), // 12 is gap-3
+                behavior: 'smooth'
+            })
+        }
+    }
+
+    const hasVoted = !!myMember?.vote_pub_id
+
     return (
-        <div className="w-full max-w-lg space-y-4 animate-fade-in flex flex-col h-full">
-            <div className="text-center space-y-1 shrink-0">
-                <h2 className="text-2xl font-bold text-white">Choose Your Pub</h2>
-                <p className="text-white/60 text-sm">Top 10 options within 10 min walk.</p>
-            </div>
+        <div className="w-full max-w-lg space-y-4 animate-fade-in flex flex-col h-full relative">
 
             {/* MAP SECTION */}
-            <div className="w-full h-48 sm:h-64 rounded-xl overflow-hidden border border-white/10 shrink-0 relative">
+            <div className="w-full h-1/2 min-h-[40vh] rounded-xl overflow-hidden border border-white/10 shrink-0 relative shadow-2xl">
                 <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''}>
                     <Map
-                        defaultCenter={defaultCenter}
+                        defaultCenter={mapCenter}
+                        center={mapCenter}
                         defaultZoom={15}
                         mapId="pub-voting-map"
                         disableDefaultUI={true}
                         className="w-full h-full"
+                        gestureHandling={'greedy'}
                     >
                         {pubs.map((pub, idx) => (
                             <AdvancedMarker
                                 key={pub.place_id}
-                                position={pub.location || defaultCenter}
-                                onClick={() => setSelectedPubId(pub.place_id)}
+                                position={pub.location}
+                                onClick={() => scrollToPub(pub.place_id)}
                                 zIndex={selectedPubId === pub.place_id ? 50 : 10}
                             >
-                                <div className={`flex flex-col items-center group cursor-pointer transition-transform ${selectedPubId === pub.place_id ? 'scale-110' : ''}`}>
-                                    <div className={`
-                                        text-[10px] font-bold px-2 py-0.5 rounded shadow-lg mb-1 whitespace-nowrap
-                                        ${selectedPubId === pub.place_id
-                                            ? 'bg-pint-gold text-charcoal border border-white'
-                                            : 'bg-charcoal text-white border border-white/20'
-                                        }
-                                    `}>
-                                        {idx + 1}. {pub.name}
-                                    </div>
+                                <div className={`flex flex-col items-center group cursor-pointer transition-transform ${selectedPubId === pub.place_id ? 'scale-125 z-50' : 'scale-90 opacity-80'}`}>
                                     <Pin
                                         background={selectedPubId === pub.place_id ? '#FFD700' : '#333'}
                                         borderColor={'#FFF'}
                                         glyphColor={selectedPubId === pub.place_id ? '#000' : '#FFF'}
-                                        scale={selectedPubId === pub.place_id ? 1.2 : 1.0}
+                                        scale={selectedPubId === pub.place_id ? 1.3 : 1.0}
                                     />
+                                    {/* Simple Label */}
+                                    {selectedPubId === pub.place_id && (
+                                        <div className="mt-1 px-2 py-1 bg-charcoal text-white text-[10px] font-bold rounded border border-white/20 whitespace-nowrap shadow-xl">
+                                            {pub.name}
+                                        </div>
+                                    )}
                                 </div>
                             </AdvancedMarker>
                         ))}
                     </Map>
                 </APIProvider>
-            </div>
 
-            {/* LIST SECTION */}
-            <div className="grid gap-3 overflow-y-auto pr-1 custom-scrollbar flex-1 min-h-0">
-                {pubs.map((pub, i) => (
-                    <Card
-                        key={pub.place_id}
-                        onClick={() => setSelectedPubId(pub.place_id)}
-                        className={`p-4 cursor-pointer transition-all border-2 shrink-0 ${selectedPubId === pub.place_id
-                            ? 'border-pint-gold bg-white/10 shadow-[0_0_15px_rgba(255,215,0,0.2)]'
-                            : 'border-transparent bg-white/5 hover:bg-white/10'
-                            }`}
-                    >
-                        <div className="flex justify-between items-start mb-2">
-                            <h3 className="font-bold text-lg text-white leading-tight">
-                                {i + 1}. {pub.name}
-                            </h3>
-                            <div className="flex items-center gap-1 text-pint-gold bg-pint-gold/10 px-2 py-0.5 rounded text-xs font-bold">
-                                <Star className="w-3 h-3 fill-current" />
-                                {pub.rating}
-                            </div>
-                        </div>
-
-                        <p className="text-xs text-white/50 mb-3 line-clamp-1">
-                            <MapPin className="w-3 h-3 inline mr-1" />
-                            {pub.vicinity}
-                        </p>
-
-                        <div className="bg-charcoal/50 p-2 rounded-lg border border-white/5 mb-3">
-                            <p className="text-sm text-white/90 italic leading-relaxed">
-                                {pub.vibe_summary}
-                            </p>
-                        </div>
-
-                        {/* Metrics */}
-                        <div className="flex gap-4 text-xs text-white/40">
-                            <div className="flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
-                                {Math.round(pub.total_travel_time / (Object.keys(pub.travel_times).length || 1))} min tot
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <Beer className="w-3 h-3" />
-                                Fair Score: {Math.round(pub.fairness_score)}
-                            </div>
-                        </div>
-                    </Card>
-                ))}
-            </div>
-
-            {/* Sticky Actions */}
-            <div className="sticky bottom-0 pt-4 bg-gradient-to-t from-charcoal via-charcoal to-transparent pb-2 shrink-0 z-10">
-                {isHost && !readOnly ? (
-                    <Button
-                        onClick={handleHostConfirm}
-                        disabled={!selectedPubId}
-                        variant="primary"
-                        size="lg"
-                        className="w-full shadow-lg"
-                    >
-                        Lock In Winner 🔒
-                    </Button>
-                ) : (
-                    <div className="text-center p-3 bg-white/5 rounded-lg border border-white/10">
-                        <p className="text-white/70 text-sm animate-pulse">
-                            {readOnly ? "Voting Closed" : "Waiting for Host to pick the winner..."}
-                        </p>
+                {/* Voting Prompt Overlay */}
+                {!hasVoted && !readOnly && (
+                    <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-pint-gold animate-pulse" />
+                        <span className="text-white text-xs font-bold">Cast your vote!</span>
                     </div>
+                )}
+            </div>
+
+            {/* CAROUSEL SECTION */}
+            <div className="relative -mt-12 z-20">
+                <div
+                    ref={carouselRef}
+                    className="flex overflow-x-auto snap-x snap-mandatory gap-3 px-8 pb-4 hide-scrollbar"
+                    style={{ scrollPaddingLeft: '2rem' }}
+                >
+                    {pubs.map((pub, i) => {
+                        const isSelected = selectedPubId === pub.place_id
+                        const myVote = myMember?.vote_pub_id === pub.place_id
+                        const pubVotes = votes[pub.place_id] || []
+
+                        return (
+                            <Card
+                                key={pub.place_id}
+                                onClick={() => scrollToPub(pub.place_id)}
+                                className={cn(
+                                    "snap-center w-[85%] shrink-0 p-4 cursor-pointer transition-all border-2 flex flex-col gap-3 shadow-xl h-auto min-h-[180px]",
+                                    isSelected
+                                        ? "border-pint-gold bg-charcoal shadow-[0_5px_20px_rgba(255,215,0,0.15)] scale-100"
+                                        : "border-white/5 bg-charcoal/90 scale-95 opacity-80 hover:opacity-100"
+                                )}
+                            >
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h3 className="font-bold text-lg text-white leading-tight line-clamp-2">
+                                            {i + 1}. {pub.name}
+                                        </h3>
+                                        <p className="text-xs text-white/50 mt-1 line-clamp-1">
+                                            <MapPin className="w-3 h-3 inline mr-1" />
+                                            {pub.vicinity}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-1 text-pint-gold bg-pint-gold/10 px-2 py-1 rounded text-xs font-bold shrink-0">
+                                        <Star className="w-3 h-3 fill-current" />
+                                        {pub.rating}
+                                    </div>
+                                </div>
+
+                                <div className="bg-white/5 p-2 rounded-lg border border-white/5">
+                                    <p className="text-xs text-white/80 italic leading-relaxed line-clamp-3">
+                                        {pub.vibe_summary}
+                                    </p>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="mt-auto flex gap-3 pt-2">
+                                    {!readOnly && (
+                                        <Button
+                                            size="sm"
+                                            variant={myVote ? "secondary" : "outline"}
+                                            className={cn("flex-1 text-xs gap-2 h-8", myVote ? "bg-fairness-green/20 text-fairness-green border-fairness-green/50" : "hover:bg-pint-gold/10 hover:text-pint-gold hover:border-pint-gold/50")}
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                onVote(pub.place_id)
+                                            }}
+                                        >
+                                            <ThumbsUp className="w-3 h-3" />
+                                            {myVote ? 'Voted' : 'Vote'}
+                                        </Button>
+                                    )}
+                                    {isHost && !readOnly && (
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-8 px-2 text-white/40 hover:text-white"
+                                            onClick={(e) => { e.stopPropagation(); onConfirmWinner(pub.place_id) }}
+                                        >
+                                            🏆 Pick
+                                        </Button>
+                                    )}
+                                </div>
+                            </Card>
+                        )
+                    })}
+                </div>
+            </div>
+
+            {/* SCOREBOARD SECTION */}
+            <div className="flex-1 bg-white/5 rounded-t-2xl border-t border-white/10 p-4 space-y-3 overflow-y-auto">
+                <h3 className="text-xs font-bold text-white/50 uppercase tracking-widest text-center">Scoreboard</h3>
+
+                {Object.entries(votes)
+                    .sort(([, a], [, b]) => b.length - a.length)
+                    .map(([pubId, voters]) => {
+                        const pub = pubs.find(p => p.place_id === pubId)
+                        if (!pub) return null
+                        return (
+                            <div key={pubId} className="flex items-center gap-3 bg-white/5 p-2 rounded-lg animate-fade-in-up">
+                                <div className="w-8 h-8 flex items-center justify-center bg-white/10 rounded font-bold text-white text-xs shrink-0">
+                                    {voters.length}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-white text-sm font-bold truncate">{pub.name}</p>
+                                    <div className="flex -space-x-2 mt-1 overflow-visible py-1">
+                                        {voters.map(v => (
+                                            <div key={v.id} className="w-6 h-6 rounded-full border border-charcoal bg-white/20 relative overflow-hidden shrink-0" title={v.name}>
+                                                {v.photo_path ? (
+                                                    // eslint-disable-next-line @next/next/no-img-element
+                                                    <img
+                                                        src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/temporary_selfies/${v.photo_path}`}
+                                                        className="w-full h-full object-cover transform scale-x-[-1]"
+                                                        alt={v.name}
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-[8px] text-white">{v.name[0]}</div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    })
+                }
+                {Object.keys(votes).length === 0 && (
+                    <p className="text-center text-white/20 text-xs italic py-4">No votes yet...</p>
                 )}
             </div>
         </div>
