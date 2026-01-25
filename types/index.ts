@@ -63,9 +63,11 @@ export interface PartyMember {
     end_station_id?: string
 
     vote_area_id?: string // New
+    vote_pub_id?: string // New
     joined_at: string
     end_lat?: number
     end_lng?: number
+    user_id?: string // Supabase Auth User ID (Host/Claimed)
 }
 
 export interface PubRecommendation {
