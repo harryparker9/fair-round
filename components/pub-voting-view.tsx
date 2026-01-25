@@ -170,7 +170,7 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
                                     {!readOnly && (
                                         <Button
                                             size="sm"
-                                            variant={myVote ? "secondary" : "outline"}
+                                            variant="secondary"
                                             className={cn("flex-1 text-xs gap-2 h-8", myVote ? "bg-fairness-green/20 text-fairness-green border-fairness-green/50" : "hover:bg-pint-gold/10 hover:text-pint-gold hover:border-pint-gold/50")}
                                             onClick={(e) => {
                                                 e.stopPropagation()
