@@ -7,30 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { identifyLocation, geocodeAddress } from '@/actions/location'
 import { searchStations } from '@/actions/stations'
 import { updatePartyMember, joinRoundWithReset } from '@/actions/voting'
-// ... (start of component)
 
-if (memberId) {
-    // Already identified
-} else {
-    // INSERT via Server Action to trigger reset logic
-    try {
-        // @ts-ignore
-        const res = await joinRoundWithReset(roundId, name.trim(), photoPath)
-        if (res && res.member) {
-            memberId = res.member.id
-        }
-    } catch (e) {
-        // Fallback if needed, but should work
-        console.error("Join action failed", e)
-    }
-}
-
-if (memberId) {
-    localStorage.setItem(`fair-round-member-id-${roundId}`, memberId)
-    localStorage.setItem(`fair-round-joined-${roundId}`, 'true')
-}
-
-onJoin()
 import { MapPin, Train, RefreshCw, Home, Map as MapIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MapPicker } from '@/components/map-picker'
