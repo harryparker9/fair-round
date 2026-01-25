@@ -201,6 +201,17 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
         setMyMemberId(memberId)
     }
 
+    const handleKick = async (memberId: string) => {
+        if (!confirm("Kick this person?")) return
+        try {
+            // @ts-ignore
+            await deletePartyMember(roundId, memberId)
+            // Realtime will update list
+        } catch (e) {
+            alert("Failed to kick")
+        }
+    }
+
     // HOST ACTIONS
     const isHost = myUserId === roundHostId
 
@@ -524,8 +535,17 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                                     <div
                                                         key={member.id}
                                                         onClick={() => setMapState({ isOpen: true, mode: 'single', focusedMemberId: member.id })}
-                                                        className="flex items-center gap-4 bg-white/5 hover:bg-white/10 p-3 rounded-xl border border-white/5 hover:border-pint-gold/50 animate-pop-in cursor-pointer transition-all active:scale-95 group"
+                                                        className="flex items-center gap-4 bg-white/5 hover:bg-white/10 p-3 rounded-xl border border-white/5 hover:border-pint-gold/50 animate-pop-in cursor-pointer transition-all active:scale-95 group relative pr-10"
                                                     >
+                                                        {isHost && member.id !== myMemberId && (
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleKick(member.id); }}
+                                                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-white/20 hover:text-red-400 hover:bg-red-500/10 rounded-full transition-all"
+                                                                title="Kick Member"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        )}
                                                         <div className="w-12 h-12 rounded-full overflow-hidden border border-white/20 relative bg-black/40 flex-shrink-0">
                                                             {member.photo_path ? (
                                                                 /* eslint-disable-next-line @next/next/no-img-element */
