@@ -72,7 +72,7 @@ export function ResultsView({ recommendations, members = [] }: ResultsViewProps)
             {/* Primary Action: Share */}
             {recommendations[0] && (
                 <Button
-                    variant="outline"
+                    variant="secondary"
                     onClick={handleShare}
                     disabled={isSharing}
                     className="w-full border-pint-gold/50 text-pint-gold hover:bg-pint-gold/10 gap-2"
