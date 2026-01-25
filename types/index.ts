@@ -85,4 +85,8 @@ export interface PubRecommendation {
     }>
     total_travel_time: number
     fairness_score: number
+    location?: {
+        lat: number
+        lng: number
+    }
 }
