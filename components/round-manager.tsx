@@ -506,7 +506,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                             {uniqueMembers.map((member) => {
                                                 // Resolve Start Text (Lobby Version)
                                                 let startText = 'Location Pending'
-                                                if (member.start_location_type === 'station') {
+                                                if (member.start_location_type === 'station' && member.start_station_id) {
                                                     startText = stationData[member.start_station_id]?.name || 'Station'
                                                 } else if (member.start_location_type === 'live' || member.start_location_type === 'custom') {
                                                     startText = member.location?.address || 'Pinned Location'
@@ -516,7 +516,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
 
                                                 // Resolve End (if different)
                                                 let endText = null
-                                                if (member.end_location_type === 'station') {
+                                                if (member.end_location_type === 'station' && member.end_station_id) {
                                                     endText = stationData[member.end_station_id]?.name || 'Station'
                                                 } else if (member.end_location_type === 'custom') {
                                                     endText = 'Custom Return'
