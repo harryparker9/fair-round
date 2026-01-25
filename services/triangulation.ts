@@ -545,12 +545,12 @@ export const triangulationService = {
     },
 
     // 3. Find Pubs (Only AFTER a station is selected)
-    findPubsNearStation: async (stationLocation: Coordinates, members: PartyMember[], filters: string[] = []): Promise<PubRecommendation[]> => {
+    findPubsNearStation: async (stationLocation: Coordinates, members: PartyMember[], filters: string[] = [], radius: number = 800): Promise<PubRecommendation[]> => {
         // This is the "Verification" step basically. 
         // User picked "Waterloo". Now we show pubs near Waterloo.
 
         // 1. Search Google Places (Paid, but only 1 call now!)
-        const pubsResponse = await maps.searchNearbyPubs(stationLocation, 800, filters); // 800m walk (~10 mins)
+        const pubsResponse = await maps.searchNearbyPubs(stationLocation, radius, filters); // Dynamic Radius
         const results = pubsResponse.data.results.slice(0, 10);
 
         // 2. Vibe Check (Google)

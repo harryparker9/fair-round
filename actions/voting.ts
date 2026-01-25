@@ -57,7 +57,7 @@ export async function castVote(memberId: string, areaId: string) {
 }
 
 // 3. Host finalizes the vote -> Moves to results
-export async function finalizeVoting(roundId: string, winningAreaId: string, filters: string[] = []) {
+export async function finalizeVoting(roundId: string, winningAreaId: string, filters: string[] = [], radius: number = 800) {
     try {
         // 1. Get the round to find the winning area details
         const { data: round } = await supabase
@@ -80,7 +80,7 @@ export async function finalizeVoting(roundId: string, winningAreaId: string, fil
         // 3. Trigger Triangulation with this specific center
         console.log("Calling triangulateRound...");
         try {
-            await triangulateRound(roundId, selectedArea.center, filters)
+            await triangulateRound(roundId, selectedArea.center, filters, radius)
         } catch (tError: any) {
             console.error("Triangulation internal error:", tError);
             throw new Error(`Triangulation failed: ${tError.message}`);

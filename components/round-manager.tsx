@@ -5,12 +5,13 @@ import { JoinRoundForm } from '@/components/join-round-form'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { ResultsView } from '@/components/results-view'
-import { PubRecommendation, AreaOption } from '@/types'
+import { PubRecommendation, AreaOption, Round, PartyMember } from '@/types'
 import { supabase } from '@/lib/supabase'
 import { startAreaVoting, endRound, regressStage, updatePartyMember, castVote, finalizeVoting } from '@/actions/voting'
 import { AreaVotingView } from '@/components/area-voting-view'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
+import { SearchPreferencesModal } from './search-preferences-modal'
 import { LogOut, Settings, Users, ChevronDown, MapPin } from 'lucide-react'
 
 
@@ -26,14 +27,22 @@ import { confirmPubWinner } from '@/actions/voting'
 
 export function RoundManager({ roundId, code }: RoundManagerProps) {
     const router = useRouter()
-    const [joined, setJoined] = useState(false)
+    // State
+    const [roundData, setRoundData] = useState<Round | null>(null)
+    const [members, setMembers] = useState<PartyMember[]>([])
     const [loading, setLoading] = useState(true)
-    const [recommendations, setRecommendations] = useState<PubRecommendation[] | null>(null)
+    const [error, setError] = useState<string | null>(null)
+    const [joined, setJoined] = useState(false)
+    const [systemMessage, setSystemMessage] = useState<string | null>(null)
+
+    // UI State
+    const [viewingStage, setViewingStage] = useState<'lobby' | 'voting' | 'pub_voting' | 'results' | null>(null)
+    const [mapState, setMapState] = useState<{ isOpen: boolean, mode: 'all' | 'single', focusedMemberId?: string }>({ isOpen: false, mode: 'all' })
     const [isEditingSettings, setIsEditingSettings] = useState(false)
-    const [mapState, setMapState] = useState<{ isOpen: boolean, mode: 'lobby' | 'voting' | 'results' | 'single', focusedMemberId?: string }>({
-        isOpen: false,
-        mode: 'lobby'
-    })
+    const [showSearchPrefs, setShowSearchPrefs] = useState(false)
+    const [pendingWinningAreaId, setPendingWinningAreaId] = useState<string | null>(null)
+
+    const [recommendations, setRecommendations] = useState<PubRecommendation[] | null>(null)
 
     // Status States
     const [generatingAreas, setGeneratingAreas] = useState(false)
@@ -477,12 +486,8 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                             onStageChange={async (newStage, winningAreaId) => {
                                                 if (!isHost || isReview) return
                                                 if (newStage === 'pub_voting' && winningAreaId) {
-                                                    setGeneratingAreas(true)
-                                                    try {
-                                                        await finalizeVoting(roundId, winningAreaId)
-                                                    } finally {
-                                                        setGeneratingAreas(false)
-                                                    }
+                                                    setPendingWinningAreaId(winningAreaId)
+                                                    setShowSearchPrefs(true)
                                                 }
                                             }}
                                         />
@@ -565,6 +570,28 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                             )}
                                         </div>
 
+                                        {/* Share Button */}
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => {
+                                                const url = window.location.href
+                                                if (navigator.share) {
+                                                    navigator.share({
+                                                        title: 'Join my Fair Round',
+                                                        text: 'Vote on the fairest pub for us all!',
+                                                        url
+                                                    }).catch(() => { })
+                                                } else {
+                                                    navigator.clipboard.writeText(url)
+                                                    alert('Link copied to clipboard!')
+                                                }
+                                            }}
+                                            className="text-white/60 hover:text-white bg-white/5 border border-white/10 hover:bg-white/10"
+                                        >
+                                            🔗 Invite Friends
+                                        </Button>
+
                                         {isHost ? (
                                             <Button
                                                 variant="primary"
@@ -592,7 +619,28 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                         })()}
                     </>
                 )}
+                )}
             </div>
+
+            <SearchPreferencesModal
+                open={showSearchPrefs}
+                onOpenChange={setShowSearchPrefs}
+                isLoading={generatingAreas}
+                onConfirm={async (prefs) => {
+                    if (!pendingWinningAreaId) return
+                    setGeneratingAreas(true)
+                    try {
+                        // @ts-ignore - preferences handling added next
+                        await finalizeVoting(roundId, pendingWinningAreaId, prefs.filters, prefs.radius)
+                        setShowSearchPrefs(false)
+                    } catch (e) {
+                        console.error(e)
+                        alert('Failed to find pubs. Try again.')
+                    } finally {
+                        setGeneratingAreas(false)
+                    }
+                }}
+            />
         </div>
     )
 }
