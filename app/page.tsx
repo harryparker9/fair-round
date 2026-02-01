@@ -1,6 +1,11 @@
 import { CreateRoundCard } from "@/components/create-round-card";
+import { useState } from "react";
+import { useState } from "react";
 
 export default function Home() {
+  const [view, setView] = useState<'intro' | 'action'>('intro')
+  const [actionType, setActionType] = useState<'create' | 'join'>('create')
+
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-4 bg-charcoal relative overflow-hidden">
       {/* Background Ambience */}
@@ -11,27 +16,62 @@ export default function Home() {
       {/* Content */}
       <div className="relative z-10 w-full max-w-lg flex flex-col items-center gap-8 animate-fade-in-up">
 
-        {/* Larry Introduction */}
-        <div className="flex flex-col items-center text-center space-y-4">
-          <div className="w-32 h-32 relative animate-float">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/larry.png" alt="Larry the Lares" className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(255,215,0,0.5)]" />
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-pint-gold to-pint-gold/70 drop-shadow-sm">
-              Fancy a pint?
-            </h1>
-            <p className="text-white/80 text-lg max-w-xs mx-auto italic">
-              "I’m Larry. I’ve been guarding these crossroads for 2,000 years. Let’s find you a spot for a pint."
-            </p>
-          </div>
-        </div>
+        {view === 'intro' ? (
+          <div className="flex flex-col items-center text-center space-y-8 animate-in fade-in zoom-in duration-500">
+            {/* Branding & Larry */}
+            <div className="space-y-6">
+              <h1 className="text-5xl md:text-7xl font-bold tracking-tighter text-white drop-shadow-xl">
+                Fair Round
+              </h1>
 
-        <CreateRoundCard />
+              <div className="w-40 h-40 mx-auto relative animate-float">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/larry.png" alt="Larry the Lares" className="w-full h-full object-contain drop-shadow-[0_0_25px_rgba(255,215,0,0.3)]" />
+              </div>
 
-        <HowItWorks />
+              <div className="space-y-2 max-w-xs mx-auto">
+                <p className="text-pint-gold font-bold text-lg uppercase tracking-widest">Fancy a pint?</p>
+                <p className="text-white/80 text-base italic">
+                  "Welcome to Fair Round. I’m Larry, and I'll help you find the best location to meet up at the pub."
+                </p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+              <button
+                onClick={() => { setActionType('create'); setView('action'); }}
+                className="group relative overflow-hidden rounded-2xl bg-white/5 border border-white/10 p-6 hover:bg-pint-gold/10 hover:border-pint-goldTransition-all transition-all duration-300 hover:scale-[1.02] shadow-xl"
+              >
+                <div className="flex flex-col items-center gap-3">
+                  <span className="text-4xl group-hover:scale-110 transition-transform duration-300">🍺</span>
+                  <span className="text-white font-bold text-lg">Start a Party</span>
+                </div>
+              </button>
+
+              <button
+                onClick={() => { setActionType('join'); setView('action'); }}
+                className="group relative overflow-hidden rounded-2xl bg-white/5 border border-white/10 p-6 hover:bg-fairness-green/10 hover:border-fairness-green transition-all duration-300 hover:scale-[1.02] shadow-xl"
+              >
+                <div className="flex flex-col items-center gap-3">
+                  <span className="text-4xl group-hover:scale-110 transition-transform duration-300">🎫</span>
+                  <span className="text-white font-bold text-lg">Join a Party</span>
+                </div>
+              </button>
+            </div>
+
+            <HowItWorks />
+          </div>
+        ) : (
+          <div className="w-full animate-in slide-in-from-bottom-8 fade-in duration-500">
+            <CreateRoundCard
+              initialTab={actionType}
+              onBack={() => setView('intro')}
+            />
+          </div>
+        )}
+
       </div>
-
 
     </main>
   );

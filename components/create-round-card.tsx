@@ -18,11 +18,16 @@ function generateCode() {
     return result
 }
 
-export function CreateRoundCard() {
+interface CreateRoundCardProps {
+    initialTab?: 'create' | 'join'
+    onBack?: () => void
+}
+
+export function CreateRoundCard({ initialTab = 'create', onBack }: CreateRoundCardProps) {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
-    const [joinLoading, setJoinLoading] = useState(false) // Separate loading state
-    const [activeTab, setActiveTab] = useState<'create' | 'join'>('create')
+    const [joinLoading, setJoinLoading] = useState(false)
+    const [activeTab, setActiveTab] = useState<'create' | 'join'>(initialTab)
     const [joinCode, setJoinCode] = useState('')
     const [joinError, setJoinError] = useState<string | null>(null) // Error state
 
@@ -98,8 +103,16 @@ export function CreateRoundCard() {
     }
 
     return (
-        <Card className="max-w-md w-full text-center space-y-6 animate-fade-in-up p-6">
-            <div className="space-y-2">
+        <Card className="max-w-md w-full text-center space-y-6 animate-fade-in-up p-6 relative">
+            {onBack && (
+                <button
+                    onClick={onBack}
+                    className="absolute top-4 left-4 text-white/40 hover:text-white transition-colors"
+                >
+                    ←
+                </button>
+            )}
+            <div className="space-y-2 pt-2">
                 <h2 className="text-3xl font-bold tracking-tight text-white">Start a Round</h2>
                 <p className="text-white/60">Find the fairest pub for your group in London.</p>
             </div>
