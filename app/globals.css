@@ -3,12 +3,12 @@
 @theme {
   --color-background: #121212;
   --color-foreground: #ededed;
-  
+
   /* Fair Round Brand Colors */
   --color-charcoal: #121212;
   --color-pint-gold: #FFD700;
   --color-fairness-green: #00C853;
-  
+
   /* Glassmorphism Tokens */
   --color-glass-bg: rgba(255, 255, 255, 0.05);
   --color-glass-border: rgba(255, 255, 255, 0.1);
@@ -33,9 +33,9 @@ body {
   .glass-panel {
     @apply backdrop-blur-xl bg-glass-bg border border-glass-border shadow-lg;
   }
-  
+
   .glass-button {
-    @apply backdrop-blur-lg bg-pint-gold text-black font-semibold shadow-[0_0_15px_rgba(255,215,0,0.3)] transition-all hover:bg-yellow-400 active:scale-95;
+    @apply backdrop-blur-lg bg-pint-gold text-black font-semibold shadow-[0_0_15px_rgba(255, 215, 0, 0.3)] transition-all hover:bg-yellow-400 active:scale-95;
   }
 
   .animate-float {
@@ -44,6 +44,18 @@ body {
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@utility mask-radial-faded {
+  mask-image: radial-gradient(circle at center, black 40%, transparent 70%);
+  -webkit-mask-image: radial-gradient(circle at center, black 40%, transparent 70%);
 }
