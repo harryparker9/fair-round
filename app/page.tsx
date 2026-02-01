@@ -32,15 +32,7 @@ export default function Home() {
         <HowItWorks />
       </div>
 
-      <style jsx global>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-10px); }
-        }
-        .animate-float {
-          animation: float 4s ease-in-out infinite;
-        }
-      `}</style>
+
     </main>
   );
 }

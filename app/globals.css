@@ -37,4 +37,13 @@ body {
   .glass-button {
     @apply backdrop-blur-lg bg-pint-gold text-black font-semibold shadow-[0_0_15px_rgba(255,215,0,0.3)] transition-all hover:bg-yellow-400 active:scale-95;
   }
+
+  .animate-float {
+    animation: float 4s ease-in-out infinite;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
 }
