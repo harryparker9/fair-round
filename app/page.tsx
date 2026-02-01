@@ -19,7 +19,7 @@ export default function Home() {
           </div>
           <div className="space-y-2">
             <h1 className="text-4xl md:text-5xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-pint-gold to-pint-gold/70 drop-shadow-sm">
-              Hail, Traveler!
+              Fancy a pint?
             </h1>
             <p className="text-white/80 text-lg max-w-xs mx-auto italic">
               "I’m Larry. I’ve been guarding these crossroads for 2,000 years. Let’s find you a spot for a pint."
