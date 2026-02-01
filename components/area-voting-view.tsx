@@ -75,10 +75,12 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
                 {aiStrategy && (
                     <div className="bg-pint-gold/5 border border-pint-gold/10 p-3 rounded-xl mb-2 flex gap-3">
                         <div className="shrink-0 flex flex-col items-center pt-1">
-                            <div className="w-6 h-6 rounded-full bg-pint-gold text-charcoal flex items-center justify-center text-[10px] font-bold">AI</div>
+                            <div className="w-8 h-8 rounded-full bg-pint-gold text-charcoal flex items-center justify-center text-xs font-bold border-2 border-white shadow-lg overflow-hidden">
+                                👻
+                            </div>
                         </div>
                         <div>
-                            <p className="text-xs text-pint-gold font-bold uppercase tracking-wider mb-0.5">Strategist's Take</p>
+                            <p className="text-xs text-pint-gold font-bold uppercase tracking-wider mb-0.5">Larry's Pick</p>
                             <p className="text-sm text-white/90 italic leading-relaxed">"{aiStrategy}"</p>
                         </div>
                     </div>
@@ -173,7 +175,7 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
                                     {area.ai_rationale && (
                                         <div className="bg-pint-gold/10 border border-pint-gold/20 p-3 rounded-lg flex gap-3 items-start">
                                             <div className="bg-pint-gold text-charcoal text-[10px] font-bold px-1.5 rounded uppercase tracking-wider mt-0.5">
-                                                AI
+                                                Larry
                                             </div>
                                             <p className="text-sm text-pint-gold font-medium italic">"{area.ai_rationale}"</p>
                                         </div>

@@ -4,13 +4,13 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 
 const MESSAGES = [
-    "Analyzing Transport Links...",
-    "Triangulating Fair Midpoint...",
-    "Fetching TfL Data...",
-    "Checking Pub Ratings...",
-    "Optimizing Journey Times...",
-    "Ensuring Nobody Walks Too Far...",
-    "Consulting the Beer Gods..."
+    "Larry is consulting the spirits...",
+    "Scanning the ancient ley lines of London...",
+    "Larry is asking the Northern Line to behave...",
+    "Checking which pubs have the best vibes...",
+    "Triangulating the fairest point for everyone...",
+    "Larry is polishing the pint glasses...",
+    "Almost there..."
 ]
 
 export function LoadingNarrative({ active = false }: { active: boolean }) {

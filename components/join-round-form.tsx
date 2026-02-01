@@ -500,86 +500,119 @@ export function JoinRoundForm({ roundId, existingMembers = [], onJoin, initialDa
                     />
                 )}
 
-                {/* 3. End Location */}
-                <div className="space-y-3 pt-2">
-                    <label className="text-xs uppercase tracking-widest text-white/50 font-bold block text-center">End Location</label>
-                    <div className="flex bg-white/5 p-1 rounded-lg">
-                        <button type="button" onClick={() => setEndMode('same')} className={cn("flex-1 py-2 text-xs rounded-md transition-all flex items-center justify-center gap-1", endMode === 'same' ? "bg-white/20 text-white font-bold" : "text-white/40 hover:text-white")}>
-                            <RefreshCw className="w-3 h-3" /> Same
+                {/* 3. Return Trip Logic - Progressive Disclosure */}
+                <div className="space-y-4 pt-4 border-t border-white/10">
+                    <label className="text-xs uppercase tracking-widest text-white/50 font-bold block text-center">Return Journey</label>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            type="button"
+                            onClick={() => setEndMode('same')}
+                            className={cn(
+                                "py-3 px-2 rounded-xl text-sm font-bold transition-all flex flex-col items-center gap-1 border",
+                                endMode === 'same'
+                                    ? "bg-white text-charcoal border-white shadow-[0_0_15px_rgba(255,255,255,0.2)]"
+                                    : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white"
+                            )}
+                        >
+                            <RefreshCw className="w-4 h-4" />
+                            <span>Same Location</span>
                         </button>
-                        <button type="button" onClick={() => setEndMode('station')} className={cn("flex-1 py-2 text-xs rounded-md transition-all flex items-center justify-center gap-1", endMode === 'station' ? "bg-white/20 text-white font-bold" : "text-white/40 hover:text-white")}>
-                            <Train className="w-3 h-3" /> Station
-                        </button>
-                        <button type="button" onClick={() => setEndMode('custom')} className={cn("flex-1 py-2 text-xs rounded-md transition-all flex items-center justify-center gap-1", endMode === 'custom' ? "bg-white/20 text-white font-bold" : "text-white/40 hover:text-white")}>
-                            <MapPin className="w-3 h-3" /> Address
+                        <button
+                            type="button"
+                            onClick={() => { if (endMode === 'same') setEndMode('station'); }}
+                            className={cn(
+                                "py-3 px-2 rounded-xl text-sm font-bold transition-all flex flex-col items-center gap-1 border",
+                                endMode !== 'same'
+                                    ? "bg-white text-charcoal border-white shadow-[0_0_15px_rgba(255,255,255,0.2)]"
+                                    : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white"
+                            )}
+                        >
+                            <MapIcon className="w-4 h-4" />
+                            <span>Different Spot</span>
                         </button>
                     </div>
 
-                    {endMode === 'station' && (
-                        <div className="relative">
-                            {!selectedEndStation ? (
-                                <input
-                                    type="text"
-                                    placeholder="Search Home Station..."
-                                    value={endStationQuery}
-                                    onChange={(e) => setEndStationQuery(e.target.value)}
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pint-gold"
-                                    autoFocus
-                                />
-                            ) : (
-                                <div className="bg-white/10 border border-white/20 p-3 rounded-xl flex justify-between items-center">
-                                    <div className="text-left">
-                                        <p className="text-white font-bold text-sm">{selectedEndStation.name}</p>
-                                        <p className="text-white/40 text-xs">Home Base</p>
-                                    </div>
-                                    <button type="button" onClick={() => { setSelectedEndStation(null); setEndStationQuery(''); }} className="text-white/60 hover:text-white">✕</button>
-                                </div>
-                            )}
+                    {endMode !== 'same' && (
+                        <div className="animate-in fade-in slide-in-from-top-4 pt-2 space-y-3 p-4 bg-white/5 rounded-2xl border border-white/10">
+                            <label className="text-xs uppercase tracking-widest text-pint-gold font-bold block text-center mb-2">Where are you ending?</label>
 
-                            {endStationResults.length > 0 && !selectedEndStation && (
-                                <div className="absolute bottom-full mb-2 left-0 right-0 bg-charcoal border border-white/10 rounded-xl shadow-2xl max-h-48 overflow-y-auto z-50">
-                                    {endStationResults.map(s => (
-                                        <div key={s.id} onClick={() => { setSelectedEndStation(s); setEndStationResults([]); }} className="p-3 hover:bg-white/10 cursor-pointer border-b border-white/5 last:border-0 text-left">
-                                            <p className="text-white text-sm font-medium">{s.name}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {endMode === 'custom' && (
-                        <div className="relative space-y-2">
-                            {!selectedCustomEnd ? (
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        placeholder="Return Address..."
-                                        value={customEndQuery}
-                                        onChange={(e) => setCustomEndQuery(e.target.value)}
-                                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleGeocodeEnd())}
-                                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pint-gold"
-                                        autoFocus
-                                    />
-                                    <Button type="button" onClick={handleGeocodeEnd} disabled={!customEndQuery || status === 'locating'} variant="secondary">
-                                        Search
-                                    </Button>
-                                </div>
-                            ) : (
-                                <div className="bg-white/10 border border-white/20 p-3 rounded-xl flex justify-between items-center">
-                                    <div className="text-left">
-                                        <p className="text-white font-bold text-sm truncate max-w-[200px]">{selectedCustomEnd.address}</p>
-                                        <p className="text-white/40 text-xs">Custom Return</p>
-                                    </div>
-                                    <button type="button" onClick={() => { setSelectedCustomEnd(null); setCustomEndQuery(''); }} className="text-white/60 hover:text-white">✕</button>
-                                </div>
-                            )}
-
-                            <div className="flex justify-center">
-                                <button type="button" onClick={() => setShowEndMap(true)} className="flex items-center gap-1 text-xs text-pint-gold hover:underline">
-                                    <MapIcon className="w-3 h-3" /> Pin on Map instead
+                            <div className="flex bg-black/20 p-1 rounded-lg mb-3">
+                                <button type="button" onClick={() => setEndMode('station')} className={cn("flex-1 py-2 text-xs rounded-md transition-all flex items-center justify-center gap-1", endMode === 'station' ? "bg-white/20 text-white font-bold" : "text-white/40 hover:text-white")}>
+                                    <Train className="w-3 h-3" /> Station
+                                </button>
+                                <button type="button" onClick={() => setEndMode('custom')} className={cn("flex-1 py-2 text-xs rounded-md transition-all flex items-center justify-center gap-1", endMode === 'custom' ? "bg-white/20 text-white font-bold" : "text-white/40 hover:text-white")}>
+                                    <MapPin className="w-3 h-3" /> Address
                                 </button>
                             </div>
+
+                            {endMode === 'station' && (
+                                <div className="relative">
+                                    {!selectedEndStation ? (
+                                        <input
+                                            type="text"
+                                            placeholder="Search Home Station..."
+                                            value={endStationQuery}
+                                            onChange={(e) => setEndStationQuery(e.target.value)}
+                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pint-gold"
+                                            autoFocus
+                                        />
+                                    ) : (
+                                        <div className="bg-white/10 border border-white/20 p-3 rounded-xl flex justify-between items-center">
+                                            <div className="text-left">
+                                                <p className="text-white font-bold text-sm">{selectedEndStation.name}</p>
+                                                <p className="text-white/40 text-xs">Home Base</p>
+                                            </div>
+                                            <button type="button" onClick={() => { setSelectedEndStation(null); setEndStationQuery(''); }} className="text-white/60 hover:text-white">✕</button>
+                                        </div>
+                                    )}
+
+                                    {endStationResults.length > 0 && !selectedEndStation && (
+                                        <div className="absolute bottom-full mb-2 left-0 right-0 bg-charcoal border border-white/10 rounded-xl shadow-2xl max-h-48 overflow-y-auto z-50">
+                                            {endStationResults.map(s => (
+                                                <div key={s.id} onClick={() => { setSelectedEndStation(s); setEndStationResults([]); }} className="p-3 hover:bg-white/10 cursor-pointer border-b border-white/5 last:border-0 text-left">
+                                                    <p className="text-white text-sm font-medium">{s.name}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {endMode === 'custom' && (
+                                <div className="relative space-y-2">
+                                    {!selectedCustomEnd ? (
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="Return Address..."
+                                                value={customEndQuery}
+                                                onChange={(e) => setCustomEndQuery(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleGeocodeEnd())}
+                                                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pint-gold"
+                                                autoFocus
+                                            />
+                                            <Button type="button" onClick={handleGeocodeEnd} disabled={!customEndQuery || status === 'locating'} variant="secondary">
+                                                Search
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-white/10 border border-white/20 p-3 rounded-xl flex justify-between items-center">
+                                            <div className="text-left">
+                                                <p className="text-white font-bold text-sm truncate max-w-[200px]">{selectedCustomEnd.address}</p>
+                                                <p className="text-white/40 text-xs">Custom Return</p>
+                                            </div>
+                                            <button type="button" onClick={() => { setSelectedCustomEnd(null); setCustomEndQuery(''); }} className="text-white/60 hover:text-white">✕</button>
+                                        </div>
+                                    )}
+
+                                    <div className="flex justify-center">
+                                        <button type="button" onClick={() => setShowEndMap(true)} className="flex items-center gap-1 text-xs text-pint-gold hover:underline">
+                                            <MapIcon className="w-3 h-3" /> Pin on Map instead
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
