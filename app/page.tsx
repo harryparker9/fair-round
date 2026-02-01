@@ -31,7 +31,7 @@ export default function Home() {
                   The easiest way to meet friends halfway in London.
                 </p>
                 <p className="text-white/60 text-base leading-relaxed">
-                  We calculate travel times from everyone's location using live TfL data to find the absolute fairest meeting point, then suggest top-rated pubs nearby.
+                  We use advanced AI to calculate travel times from everyone's location using live TfL data to find the absolute fairest meeting point, then suggest top-rated pubs nearby.
                 </p>
               </div>
             </div>
@@ -100,13 +100,13 @@ function HowItWorks() {
         <div className="bg-white/5 p-5 rounded-2xl border border-white/5 backdrop-blur-sm">
           <div className="w-8 h-8 rounded-full bg-pint-gold/20 text-pint-gold flex items-center justify-center font-bold text-sm mb-3 border border-pint-gold/20">2</div>
           <h4 className="text-white font-bold text-sm mb-1">I Sort the Trains</h4>
-          <p className="text-white/60 text-xs leading-relaxed">"I check live TfL data for delays, walking times, and disruptions so nobody gets stuck."</p>
+          <p className="text-white/60 text-xs leading-relaxed">"I use our AI engine to check live TfL data for delays and disruptions so nobody gets stuck."</p>
         </div>
 
         <div className="bg-white/5 p-5 rounded-2xl border border-white/5 backdrop-blur-sm">
           <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-sm mb-3 border border-blue-500/20">3</div>
           <h4 className="text-white font-bold text-sm mb-1">We Pick the Pub</h4>
-          <p className="text-white/60 text-xs leading-relaxed">"I show you the top-rated spots nearby, and you vote for your favorite."</p>
+          <p className="text-white/60 text-xs leading-relaxed">"I ask Gemini to curate the best pubs near the station, and you vote for your favorite."</p>
         </div>
       </div>
     </div>
