@@ -1,6 +1,6 @@
 import { CreateRoundCard } from "@/components/create-round-card";
 import { useState } from "react";
-import { useState } from "react";
+
 
 export default function Home() {
   const [view, setView] = useState<'intro' | 'action'>('intro')
