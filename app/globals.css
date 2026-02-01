@@ -35,7 +35,8 @@ body {
   }
 
   .glass-button {
-    @apply backdrop-blur-lg bg-pint-gold text-black font-semibold shadow-[0_0_15px_rgba(255, 215, 0, 0.3)] transition-all hover:bg-yellow-400 active:scale-95;
+    @apply backdrop-blur-lg bg-pint-gold text-black font-semibold transition-all hover:bg-yellow-400 active:scale-95;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
   }
 
   .animate-float {
