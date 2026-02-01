@@ -18,34 +18,26 @@ export default function Home() {
       {/* Content */}
       <div className="relative z-10 w-full max-w-lg flex flex-col items-center gap-8 animate-fade-in-up">
 
+
         {view === 'intro' ? (
-          <div className="flex flex-col items-center text-center space-y-8 animate-in fade-in zoom-in duration-500">
-            {/* Branding & Larry */}
-            <div className="space-y-8">
-              <div className="space-y-2">
-                <h1 className="text-6xl md:text-8xl font-black tracking-tighter text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]">
-                  Fair Round
-                </h1>
-                <p className="text-white/60 text-lg md:text-xl font-medium tracking-wide">
-                  The fairest way to meet halfway.
+          <div className="flex flex-col items-center text-center space-y-12 animate-in fade-in zoom-in duration-500 max-w-2xl w-full">
+            {/* Branding & Explanation */}
+            <div className="space-y-6">
+              <h1 className="text-7xl md:text-9xl font-black tracking-tighter text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+                Fair Round
+              </h1>
+              <div className="space-y-4 max-w-lg mx-auto">
+                <p className="text-white/90 text-xl font-medium leading-relaxed">
+                  The easiest way to meet friends halfway in London.
                 </p>
-              </div>
-
-              <div className="w-64 h-64 mx-auto relative animate-float mask-radial-faded">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/larry.png" alt="Larry the Lares" className="w-full h-full object-contain scale-110 drop-shadow-[0_0_50px_rgba(255,215,0,0.6)] mix-blend-plus-lighter" />
-              </div>
-
-              <div className="space-y-4 max-w-sm mx-auto">
-                <p className="text-pint-gold font-bold text-lg uppercase tracking-[0.2em] animate-pulse">Fancy a pint?</p>
-                <p className="text-white/70 text-lg font-light leading-relaxed">
-                  "I’m <span className="text-white font-semibold">Larry</span>, your AI Navigator. First things first..."
+                <p className="text-white/60 text-base leading-relaxed">
+                  We calculate travel times from everyone's location using live TfL data to find the absolute fairest meeting point, then suggest top-rated pubs nearby.
                 </p>
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="grid grid-cols-2 gap-4 w-full max-w-xl mx-auto pt-4 px-2">
+            <div className="grid grid-cols-2 gap-4 w-full px-2">
               <button
                 onClick={() => { setActionType('create'); setView('action'); }}
                 className="group relative overflow-hidden rounded-[2rem] bg-white/5 border border-white/10 p-4 md:p-8 hover:bg-pint-gold/10 hover:border-pint-gold/50 transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(255,215,0,0.2)]"
@@ -88,35 +80,35 @@ export default function Home() {
 
 function HowItWorks() {
   return (
-    <details className="group w-full max-w-sm cursor-pointer mb-8">
-      <summary className="flex items-center justify-center gap-2 text-xs text-white/40 uppercase tracking-widest hover:text-pint-gold transition-colors list-none select-none">
-        <span>How it Works</span>
-        <span className="group-open:rotate-180 transition-transform duration-300">▼</span>
-      </summary>
+    <div className="w-full mt-8 animate-in slide-in-from-bottom-4 fade-in duration-700 delay-200">
+      <div className="flex flex-col items-center mb-6">
+        <div className="w-24 h-24 relative mb-2 animate-float mask-radial-faded">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/larry.png" alt="Larry" className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(255,215,0,0.5)] mix-blend-plus-lighter" />
+        </div>
+        <p className="text-pint-gold font-bold text-sm uppercase tracking-widest mb-1">Meet Larry</p>
+        <h3 className="text-white font-bold text-xl">Your AI Navigator</h3>
+      </div>
 
-      <div className="mt-4 space-y-6 bg-white/5 p-6 rounded-3xl border border-white/5 backdrop-blur-md animate-in slide-in-from-top-2 fade-in shadow-2xl">
-        <div className="flex gap-4">
-          <div className="w-10 h-10 rounded-full bg-fairness-green/20 text-fairness-green flex items-center justify-center font-bold text-lg shrink-0 border border-fairness-green/20">1</div>
-          <div className="text-left">
-            <h3 className="text-white font-bold text-base">I Find the Middle</h3>
-            <p className="text-white/60 text-sm mt-1 leading-snug">"I check everyone's location to calculate the absolute fairest travel time for the group."</p>
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+        <div className="bg-white/5 p-5 rounded-2xl border border-white/5 backdrop-blur-sm">
+          <div className="w-8 h-8 rounded-full bg-fairness-green/20 text-fairness-green flex items-center justify-center font-bold text-sm mb-3 border border-fairness-green/20">1</div>
+          <h4 className="text-white font-bold text-sm mb-1">I Find the Middle</h4>
+          <p className="text-white/60 text-xs leading-relaxed">"I verify everyone's location to calculate the absolute fairest travel time for the group."</p>
         </div>
-        <div className="flex gap-4">
-          <div className="w-10 h-10 rounded-full bg-pint-gold/20 text-pint-gold flex items-center justify-center font-bold text-lg shrink-0 border border-pint-gold/20">2</div>
-          <div className="text-left">
-            <h3 className="text-white font-bold text-base">I Sort the Trains</h3>
-            <p className="text-white/60 text-sm mt-1 leading-snug">"I check live TfL data for delays and walking times so nobody gets stuck."</p>
-          </div>
+
+        <div className="bg-white/5 p-5 rounded-2xl border border-white/5 backdrop-blur-sm">
+          <div className="w-8 h-8 rounded-full bg-pint-gold/20 text-pint-gold flex items-center justify-center font-bold text-sm mb-3 border border-pint-gold/20">2</div>
+          <h4 className="text-white font-bold text-sm mb-1">I Sort the Trains</h4>
+          <p className="text-white/60 text-xs leading-relaxed">"I check live TfL data for delays, walking times, and disruptions so nobody gets stuck."</p>
         </div>
-        <div className="flex gap-4">
-          <div className="w-10 h-10 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-lg shrink-0 border border-blue-500/20">3</div>
-          <div className="text-left">
-            <h3 className="text-white font-bold text-base">We Pick the Pub</h3>
-            <p className="text-white/60 text-sm mt-1 leading-snug">"I show you the top-rated spots nearby, and you vote for your favorite."</p>
-          </div>
+
+        <div className="bg-white/5 p-5 rounded-2xl border border-white/5 backdrop-blur-sm">
+          <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-sm mb-3 border border-blue-500/20">3</div>
+          <h4 className="text-white font-bold text-sm mb-1">We Pick the Pub</h4>
+          <p className="text-white/60 text-xs leading-relaxed">"I show you the top-rated spots nearby, and you vote for your favorite."</p>
         </div>
       </div>
-    </details>
+    </div>
   )
 }
