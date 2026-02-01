@@ -27,7 +27,6 @@ export function LoadingNarrative({ active = false }: { active: boolean }) {
     if (!active) return null
 
     return (
-    return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/60 backdrop-blur-md animate-in fade-in duration-500">
             <div className="bg-white/10 border border-white/10 p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-full mx-4">
                 <div className="relative w-24 h-24 mb-6 animate-bounce duration-[2000ms]">
@@ -52,6 +51,5 @@ export function LoadingNarrative({ active = false }: { active: boolean }) {
                 </div>
             </div>
         </div>
-    )
     )
 }
