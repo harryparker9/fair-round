@@ -65,14 +65,17 @@ export default function Home() {
                 </button>
               </div>
 
-              <div className="absolute bottom-8 left-0 right-0 text-white/20 animate-bounce text-sm uppercase tracking-widest hidden md:hidden">
-                Scroll to meet Larry
-                <div className="mt-2 text-lg">↓</div>
-              </div>
+              <button
+                onClick={() => document.getElementById('meet-larry')?.scrollIntoView({ behavior: 'smooth' })}
+                className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/40 animate-bounce flex flex-col items-center gap-2 cursor-pointer hover:text-white transition-colors z-30"
+              >
+                <span className="text-xs uppercase tracking-[0.2em] font-medium">Learn More</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14" /><path d="m19 12-7 7-7-7" /></svg>
+              </button>
             </div>
 
             {/* ACT 2: The Guide (Below Fold) */}
-            <div className="w-full bg-gradient-to-b from-transparent to-black/40 pb-24 pt-12 -mx-4 px-4 md:rounded-[3rem] md:mx-auto md:max-w-4xl border-t border-white/5">
+            <div id="meet-larry" className="w-full bg-gradient-to-b from-transparent to-black/40 pb-24 pt-12 -mx-4 px-4 md:rounded-[3rem] md:mx-auto md:max-w-4xl border-t border-white/5 scroll-mt-12">
               <HowItWorks />
             </div>
 
