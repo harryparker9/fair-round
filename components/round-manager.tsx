@@ -158,6 +158,12 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                 (payload) => {
                     console.log("Realtime Round Update:", payload)
                     const newRound = payload.new
+
+                    // If stage changed, force view to current
+                    if (newRound.stage !== stage) {
+                        setViewingStage(null)
+                    }
+
                     setStage(newRound.stage)
                     setRoundStatus(newRound.status)
 

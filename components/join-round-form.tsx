@@ -136,22 +136,48 @@ export function JoinRoundForm({ roundId, existingMembers = [], onJoin, initialDa
         }
     }
 
-    const handleMapStartConfirm = (loc: { lat: number, lng: number }) => {
+    const handleMapStartConfirm = async (loc: { lat: number, lng: number }) => {
+        setStatus('locating')
+        let address = `Pinned Location`
+
+        try {
+            const res = await identifyLocation(loc.lat, loc.lng)
+            if (res.success && res.station) {
+                address = `Near ${res.station.name}`
+            }
+        } catch (e) {
+            console.error(e)
+        }
+
         setSelectedCustomStart({
             lat: loc.lat,
             lng: loc.lng,
-            address: `Pinned Location (${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)})`
+            address: address
         })
         setShowStartMap(false)
+        setStatus('idle')
     }
 
-    const handleMapEndConfirm = (loc: { lat: number, lng: number }) => {
+    const handleMapEndConfirm = async (loc: { lat: number, lng: number }) => {
+        setStatus('locating')
+        let address = `Pinned Location`
+
+        try {
+            const res = await identifyLocation(loc.lat, loc.lng)
+            if (res.success && res.station) {
+                address = `Near ${res.station.name}`
+            }
+        } catch (e) {
+            console.error(e)
+        }
+
         setSelectedCustomEnd({
             lat: loc.lat,
             lng: loc.lng,
-            address: `Pinned Location (${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)})`
+            address: address
         })
         setShowEndMap(false)
+        setStatus('idle')
     }
 
     const handleGetLocation = () => {

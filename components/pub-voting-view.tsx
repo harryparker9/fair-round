@@ -208,7 +208,7 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
                         const pub = pubs.find(p => p.place_id === pubId)
                         if (!pub) return null
                         return (
-                            <div key={pubId} className="flex items-center gap-3 bg-white/5 p-2 rounded-lg animate-fade-in-up">
+                            <div key={pubId} className="flex items-center gap-3 bg-white/5 p-2 rounded-lg animate-fade-in-up group">
                                 <div className="w-8 h-8 flex items-center justify-center bg-white/10 rounded font-bold text-white text-xs shrink-0">
                                     {voters.length}
                                 </div>
@@ -231,6 +231,16 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
                                         ))}
                                     </div>
                                 </div>
+                                {isHost && !readOnly && (
+                                    <Button
+                                        size="sm"
+                                        variant="primary"
+                                        className="h-8 px-3 bg-pint-gold text-black hover:bg-pint-gold/80 font-bold opacity-0 group-hover:opacity-100 transition-opacity"
+                                        onClick={(e) => { e.stopPropagation(); onConfirmWinner(pub.place_id) }}
+                                    >
+                                        Pick
+                                    </Button>
+                                )}
                             </div>
                         )
                     })
