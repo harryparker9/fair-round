@@ -10,15 +10,37 @@ export default function Home() {
 
       {/* Content */}
       <div className="relative z-10 w-full max-w-lg flex flex-col items-center gap-8 animate-fade-in-up">
-        <h1 className="text-5xl md:text-7xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-white/50 text-center drop-shadow-sm">
-          Fair Round
-        </h1>
+
+        {/* Larry Introduction */}
+        <div className="flex flex-col items-center text-center space-y-4">
+          <div className="w-32 h-32 relative animate-float">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/larry.png" alt="Larry the Lares" className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(255,215,0,0.5)]" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-pint-gold to-pint-gold/70 drop-shadow-sm">
+              Hail, Traveler!
+            </h1>
+            <p className="text-white/80 text-lg max-w-xs mx-auto italic">
+              "I’m Larry. I’ve been guarding these crossroads for 2,000 years. Let’s find you a spot for a pint."
+            </p>
+          </div>
+        </div>
+
         <CreateRoundCard />
 
         <HowItWorks />
       </div>
 
-
+      <style jsx global>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
+        }
+        .animate-float {
+          animation: float 4s ease-in-out infinite;
+        }
+      `}</style>
     </main>
   );
 }

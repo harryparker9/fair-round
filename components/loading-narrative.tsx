@@ -28,7 +28,10 @@ export function LoadingNarrative({ active = false }: { active: boolean }) {
 
     return (
         <div className="flex flex-col items-center justify-center space-y-2 h-full">
-            <div className="w-6 h-6 border-2 border-pint-gold border-t-transparent rounded-full animate-spin" />
+            <div className="relative w-16 h-16 animate-bounce duration-[2000ms]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/larry.png" alt="Larry" className="w-full h-full object-contain" />
+            </div>
             <div className="h-6 relative w-full flex justify-center overflow-hidden">
                 <AnimatePresence mode='wait'>
                     <motion.div

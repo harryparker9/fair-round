@@ -75,12 +75,13 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
                 {aiStrategy && (
                     <div className="bg-pint-gold/5 border border-pint-gold/10 p-3 rounded-xl mb-2 flex gap-3">
                         <div className="shrink-0 flex flex-col items-center pt-1">
-                            <div className="w-8 h-8 rounded-full bg-pint-gold text-charcoal flex items-center justify-center text-xs font-bold border-2 border-white shadow-lg overflow-hidden">
-                                👻
+                            <div className="w-10 h-10 rounded-full bg-pint-gold/10 border border-pint-gold text-charcoal flex items-center justify-center overflow-hidden">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src="/larry.png" alt="Larry" className="w-full h-full object-cover transform scale-125 translate-y-1" />
                             </div>
                         </div>
                         <div>
-                            <p className="text-xs text-pint-gold font-bold uppercase tracking-wider mb-0.5">Larry's Pick</p>
+                            <p className="text-xs text-pint-gold font-bold uppercase tracking-wider mb-0.5">Larry's Thoughts</p>
                             <p className="text-sm text-white/90 italic leading-relaxed">"{aiStrategy}"</p>
                         </div>
                     </div>
