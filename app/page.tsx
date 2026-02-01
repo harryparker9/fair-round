@@ -1,3 +1,5 @@
+'use client'
+
 import { CreateRoundCard } from "@/components/create-round-card";
 import { useState } from "react";
 
