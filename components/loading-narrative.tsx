@@ -14,40 +14,78 @@ const MESSAGES = [
 ]
 
 export function LoadingNarrative({ active = false }: { active: boolean }) {
-    const [index, setIndex] = useState(0)
+    const [phase, setPhase] = useState(0)
 
     useEffect(() => {
-        if (!active) return
-        const interval = setInterval(() => {
-            setIndex((prev) => (prev + 1) % MESSAGES.length)
-        }, 2500)
-        return () => clearInterval(interval)
+        if (!active) {
+            setPhase(0)
+            return
+        }
+
+        // Phase 1: 0s - 15s (Start)
+        setPhase(0)
+
+        // Phase 2: 15s
+        const t1 = setTimeout(() => setPhase(1), 12000)
+
+        // Phase 3: 45s
+        const t2 = setTimeout(() => setPhase(2), 40000)
+
+        return () => {
+            clearTimeout(t1)
+            clearTimeout(t2)
+        }
     }, [active])
 
     if (!active) return null
 
+    const MESSAGES = [
+        "Right then! I'm sending everyone's start and end points over to Gemini to figure out the rough best areas...",
+        "Now for the nitty-gritty. I'm checking with TfL to get the exact travel times, factoring in live delays. This might take a minute...",
+        "Almost there. Just narrowing it down to the top 3 fairest meeting points..."
+    ]
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/60 backdrop-blur-md animate-in fade-in duration-500">
-            <div className="bg-white/10 border border-white/10 p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-full mx-4">
-                <div className="relative w-24 h-24 mb-6 animate-bounce duration-[2000ms]">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-500">
+            {/* Glass Modal */}
+            <div className="relative w-full max-w-lg bg-charcoal/80 border border-white/10 shadow-2xl rounded-3xl overflow-hidden flex flex-col mx-4 p-8 items-center text-center">
+
+                {/* Arnie Image (Static/Breathing, no bobbing) */}
+                <div className="relative w-32 h-32 mb-6">
+                    <div className="absolute inset-0 bg-pint-gold/20 rounded-full blur-xl animate-pulse" />
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/arnie.png" alt="Arnie" className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(255,215,0,0.4)]" />
+                    <img
+                        src="/arnie.png"
+                        alt="Arnie"
+                        className="w-full h-full object-cover rounded-full border-4 border-pint-gold shadow-lg bg-charcoal relative z-10"
+                    />
                 </div>
 
-                <h3 className="text-pint-gold font-headline text-xl mb-4">Working on it...</h3>
+                <h3 className="text-pint-gold font-bold text-2xl mb-2">Crunching the Numbers</h3>
 
-                <div className="h-8 relative w-full flex justify-center overflow-hidden">
+                <div className="h-24 relative w-full flex items-center justify-center">
                     <AnimatePresence mode='wait'>
-                        <motion.div
-                            key={index}
+                        <motion.p
+                            key={phase}
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
-                            className="text-white/80 text-sm font-medium text-center absolute w-full"
+                            transition={{ duration: 0.5 }}
+                            className="text-white/90 text-lg font-light leading-relaxed"
                         >
-                            {MESSAGES[index]}
-                        </motion.div>
+                            {MESSAGES[phase]}
+                        </motion.p>
                     </AnimatePresence>
+                </div>
+
+                {/* Progress Bar (Visual only, approximating 60s) */}
+                <div className="w-full h-1 bg-white/10 rounded-full mt-8 overflow-hidden">
+                    <motion.div
+                        className="h-full bg-pint-gold"
+                        initial={{ width: "0%" }}
+                        animate={{ width: "95%" }}
+                        transition={{ duration: 60, ease: "linear" }}
+                    />
                 </div>
             </div>
         </div>

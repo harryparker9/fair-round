@@ -16,6 +16,7 @@ import { SearchPreferencesModal } from './search-preferences-modal'
 import { LogOut, Settings, Users, ChevronDown, MapPin, Trash2 } from 'lucide-react'
 import { MemberMapModal } from '@/components/member-map-modal'
 import { PubVotingView } from '@/components/pub-voting-view'
+import { useArnieHelp } from '@/components/arnie-help-context'
 
 interface RoundManagerProps {
     roundId: string
@@ -201,6 +202,53 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
         }
     }, [roundStatus, roundId, router])
 
+    const { setHelp } = useArnieHelp()
+
+    // Effect to update Arnie Help based on Stage
+    useEffect(() => {
+        let title = "Gathering the Troops"
+        let content = (
+            <div className="space-y-4">
+                <p>We are currently in the <strong>Lobby</strong>. This is where everyone joins the party.</p>
+                <p>Once everyone is here and has set their start location, the Host (that might be you!) will ask me to calculate the fairest meeting point.</p>
+                <p className="text-sm text-white/50">Tip: Ensure everyone has entered accurate start locations for the best results.</p>
+            </div>
+        )
+
+        if (stage === 'voting') {
+            title = "Choosing the Area"
+            content = (
+                <div className="space-y-4">
+                    <p>I've crunched the numbers and found the fairest areas for your group to meet.</p>
+                    <ul className="space-y-2">
+                        <li><strong>Fairness Score:</strong> Shows how equitable the travel times are.</li>
+                        <li><strong>Travel Times:</strong> You can see exactly how long it takes each person.</li>
+                    </ul>
+                    <p>Vote for the area that works best for the group!</p>
+                </div>
+            )
+        } else if (stage === 'pub_voting') {
+            title = "Picking the Pub"
+            content = (
+                <div className="space-y-4">
+                    <p>Area chosen! Now for the important part.</p>
+                    <p>I've curated a list of the best pubs within walking distance of the station. I look for high ratings, atmosphere, and 'proper pub' vibes.</p>
+                    <p>Cast your vote to decide where the first round is happening.</p>
+                </div>
+            )
+        } else if (stage === 'results') {
+            title = "Destination Set!"
+            content = (
+                <div className="space-y-4">
+                    <p>The votes are in and the decision is final!</p>
+                    <p>Head to the winning pub. I've provided directions for everyone.</p>
+                    <p className="font-bold text-pint-gold">Enjoy your Fair Round! 🍺</p>
+                </div>
+            )
+        }
+
+        setHelp({ title, content })
+    }, [stage, setHelp])
 
     const handleJoin = (memberId: string) => {
         setJoined(true)
@@ -627,7 +675,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                                 onClick={handleStartVoting}
                                                 disabled={generatingAreas || uniqueMembers.length === 0}
                                             >
-                                                {generatingAreas ? <div className="py-1"><LoadingNarrative active={true} /></div> : 'Calculate Options'}
+                                                {generatingAreas ? 'Calculating...' : 'Calculate Options'}
                                             </Button>
                                         ) : (
                                             <div className="p-3 bg-white/5 rounded-lg w-full">
@@ -667,6 +715,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                     }
                 }}
             />
+            <LoadingNarrative active={generatingAreas} />
         </div>
     )
 }
