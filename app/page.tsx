@@ -101,9 +101,9 @@ function HowItWorks() {
       <div className="flex flex-col items-center mb-6">
         <div className="w-24 h-24 relative mb-2 animate-float mask-radial-faded">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/larry.png" alt="Larry" className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(255,215,0,0.5)] mix-blend-plus-lighter" />
+          <img src="/arnie.png" alt="Arnie" className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(255,215,0,0.5)] mix-blend-plus-lighter" />
         </div>
-        <p className="text-pint-gold font-bold text-sm uppercase tracking-widest mb-1">Meet Larry</p>
+        <p className="text-pint-gold font-bold text-sm uppercase tracking-widest mb-1">Meet Arnie</p>
         <h3 className="text-white font-bold text-xl">Your AI Navigator</h3>
       </div>
 

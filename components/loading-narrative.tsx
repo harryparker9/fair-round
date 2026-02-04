@@ -31,7 +31,7 @@ export function LoadingNarrative({ active = false }: { active: boolean }) {
             <div className="bg-white/10 border border-white/10 p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-full mx-4">
                 <div className="relative w-24 h-24 mb-6 animate-bounce duration-[2000ms]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/larry.png" alt="Larry" className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(255,215,0,0.4)]" />
+                    <img src="/arnie.png" alt="Arnie" className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(255,215,0,0.4)]" />
                 </div>
 
                 <h3 className="text-pint-gold font-headline text-xl mb-4">Working on it...</h3>

@@ -77,11 +77,11 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
                         <div className="shrink-0 flex flex-col items-center pt-1">
                             <div className="w-10 h-10 rounded-full bg-pint-gold/10 border border-pint-gold text-charcoal flex items-center justify-center overflow-hidden">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src="/larry.png" alt="Larry" className="w-full h-full object-cover transform scale-125 translate-y-1" />
+                                <img src="/arnie.png" alt="Arnie" className="w-full h-full object-cover transform scale-125 translate-y-1" />
                             </div>
                         </div>
                         <div>
-                            <p className="text-xs text-pint-gold font-bold uppercase tracking-wider mb-0.5">Larry's Thoughts</p>
+                            <p className="text-xs text-pint-gold font-bold uppercase tracking-wider mb-0.5">Arnie's Thoughts</p>
                             <p className="text-sm text-white/90 italic leading-relaxed">"{aiStrategy}"</p>
                         </div>
                     </div>
@@ -176,7 +176,7 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
                                     {area.ai_rationale && (
                                         <div className="bg-pint-gold/10 border border-pint-gold/20 p-3 rounded-lg flex gap-3 items-start">
                                             <div className="bg-pint-gold text-charcoal text-[10px] font-bold px-1.5 rounded uppercase tracking-wider mt-0.5">
-                                                Larry
+                                                Arnie
                                             </div>
                                             <p className="text-sm text-pint-gold font-medium italic">"{area.ai_rationale}"</p>
                                         </div>
