@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { SelfieCapture } from '@/components/selfie-capture'
 import { supabase } from '@/lib/supabase'
-import { identifyLocation, geocodeAddress } from '@/actions/location'
+import { identifyLocation, geocodeAddress, reverseGeocode } from '@/actions/location'
 import { searchStations } from '@/actions/stations'
 import { updatePartyMember, joinRoundWithReset } from '@/actions/voting'
 
@@ -38,7 +38,7 @@ export function JoinRoundForm({ roundId, existingMembers = [], onJoin, initialDa
     // Station Data
     const [stationQuery, setStationQuery] = useState('')
     const [stationResults, setStationResults] = useState<any[]>([])
-    const [selectedStartStation, setSelectedStartStation] = useState<any | null>(null) // We'll load this async if needed, or just rely on ID for now if we had the full object. For MVP, we might lose the station *name* display if we strictly rely on ID, but let's see.
+    const [selectedStartStation, setSelectedStartStation] = useState<any | null>(null)
 
     // Custom Start Data
     const [customStartQuery, setCustomStartQuery] = useState('')
@@ -60,6 +60,65 @@ export function JoinRoundForm({ roundId, existingMembers = [], onJoin, initialDa
     // Map Picker State
     const [showStartMap, setShowStartMap] = useState(false)
     const [showEndMap, setShowEndMap] = useState(false)
+
+    // Map Handlers (Now Inside Component)
+    const handleMapStartConfirm = async (loc: { lat: number, lng: number }) => {
+        setStatus('locating')
+        let address = `Pinned Location`
+
+        try {
+            // Try Station First
+            const res = await identifyLocation(loc.lat, loc.lng)
+            if (res.success && res.station) {
+                address = `Near ${res.station.name}`
+            } else {
+                // Try Reverse Geocode
+                const rev = await reverseGeocode(loc.lat, loc.lng)
+                if (rev.success && rev.address) {
+                    address = rev.address
+                }
+            }
+        } catch (e) {
+            console.error(e)
+        }
+
+        setSelectedCustomStart({
+            lat: loc.lat,
+            lng: loc.lng,
+            address: address
+        })
+        setShowStartMap(false)
+        setStatus('idle')
+    }
+
+    const handleMapEndConfirm = async (loc: { lat: number, lng: number }) => {
+        setStatus('locating')
+        let address = `Pinned Location`
+
+        try {
+            // Try Station First
+            const res = await identifyLocation(loc.lat, loc.lng)
+            if (res.success && res.station) {
+                address = `Near ${res.station.name}`
+            } else {
+                // Try Reverse Geocode
+                const rev = await reverseGeocode(loc.lat, loc.lng)
+                if (rev.success && rev.address) {
+                    address = rev.address
+                }
+            }
+        } catch (e) {
+            console.error(e)
+        }
+
+        setSelectedCustomEnd({
+            lat: loc.lat,
+            lng: loc.lng,
+            address: address
+        })
+        setShowEndMap(false)
+        setStatus('idle')
+    }
 
     // Hydrate Stations if editing
     useEffect(() => {
@@ -136,49 +195,7 @@ export function JoinRoundForm({ roundId, existingMembers = [], onJoin, initialDa
         }
     }
 
-    const handleMapStartConfirm = async (loc: { lat: number, lng: number }) => {
-        setStatus('locating')
-        let address = `Pinned Location`
 
-        try {
-            const res = await identifyLocation(loc.lat, loc.lng)
-            if (res.success && res.station) {
-                address = `Near ${res.station.name}`
-            }
-        } catch (e) {
-            console.error(e)
-        }
-
-        setSelectedCustomStart({
-            lat: loc.lat,
-            lng: loc.lng,
-            address: address
-        })
-        setShowStartMap(false)
-        setStatus('idle')
-    }
-
-    const handleMapEndConfirm = async (loc: { lat: number, lng: number }) => {
-        setStatus('locating')
-        let address = `Pinned Location`
-
-        try {
-            const res = await identifyLocation(loc.lat, loc.lng)
-            if (res.success && res.station) {
-                address = `Near ${res.station.name}`
-            }
-        } catch (e) {
-            console.error(e)
-        }
-
-        setSelectedCustomEnd({
-            lat: loc.lat,
-            lng: loc.lng,
-            address: address
-        })
-        setShowEndMap(false)
-        setStatus('idle')
-    }
 
     const handleGetLocation = () => {
         setStatus('locating')
@@ -395,7 +412,7 @@ export function JoinRoundForm({ roundId, existingMembers = [], onJoin, initialDa
 
                 {/* 2. Start Location */}
                 <div className="space-y-3">
-                    <label className="text-xs uppercase tracking-widest text-white/50 font-bold block text-center">Start Location</label>
+                    <label className="text-sm font-bold text-white block text-center">Where are you starting?</label>
                     <div className="flex bg-white/5 p-1 rounded-lg">
                         <button type="button" onClick={() => setStartMode('live')} className={cn("flex-1 py-2 text-xs rounded-md transition-all flex items-center justify-center gap-1", startMode === 'live' ? "bg-fairness-green text-charcoal font-bold shadow-lg" : "text-white/60 hover:text-white")}>
                             <MapPin className="w-3 h-3" /> Live
@@ -500,42 +517,40 @@ export function JoinRoundForm({ roundId, existingMembers = [], onJoin, initialDa
                     />
                 )}
 
-                {/* 3. Return Trip Logic - Progressive Disclosure */}
+                {/* 3. Return Trip Logic - Simplified */}
                 <div className="space-y-4 pt-4 border-t border-white/10">
-                    <label className="text-xs uppercase tracking-widest text-white/50 font-bold block text-center">Return Journey</label>
+                    <label className="text-sm font-bold text-white block text-center">Going back to the same location?</label>
 
                     <div className="grid grid-cols-2 gap-3">
                         <button
                             type="button"
                             onClick={() => setEndMode('same')}
                             className={cn(
-                                "py-3 px-2 rounded-xl text-sm font-bold transition-all flex flex-col items-center gap-1 border",
+                                "py-3 px-4 rounded-xl text-sm font-bold transition-all border",
                                 endMode === 'same'
-                                    ? "bg-white text-charcoal border-white shadow-[0_0_15px_rgba(255,255,255,0.2)]"
-                                    : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white"
+                                    ? "bg-white text-charcoal border-white"
+                                    : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10"
                             )}
                         >
-                            <RefreshCw className="w-4 h-4" />
-                            <span>Same Location</span>
+                            Yes
                         </button>
                         <button
                             type="button"
                             onClick={() => { if (endMode === 'same') setEndMode('station'); }}
                             className={cn(
-                                "py-3 px-2 rounded-xl text-sm font-bold transition-all flex flex-col items-center gap-1 border",
+                                "py-3 px-4 rounded-xl text-sm font-bold transition-all border",
                                 endMode !== 'same'
-                                    ? "bg-white text-charcoal border-white shadow-[0_0_15px_rgba(255,255,255,0.2)]"
-                                    : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white"
+                                    ? "bg-white text-charcoal border-white"
+                                    : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10"
                             )}
                         >
-                            <MapIcon className="w-4 h-4" />
-                            <span>Different Spot</span>
+                            No, different
                         </button>
                     </div>
 
                     {endMode !== 'same' && (
                         <div className="animate-in fade-in slide-in-from-top-4 pt-2 space-y-3 p-4 bg-white/5 rounded-2xl border border-white/10">
-                            <label className="text-xs uppercase tracking-widest text-pint-gold font-bold block text-center mb-2">Where are you ending?</label>
+                            <label className="text-xs uppercase tracking-widest text-pint-gold font-bold block text-center mb-2">Return Location</label>
 
                             <div className="flex bg-black/20 p-1 rounded-lg mb-3">
                                 <button type="button" onClick={() => setEndMode('station')} className={cn("flex-1 py-2 text-xs rounded-md transition-all flex items-center justify-center gap-1", endMode === 'station' ? "bg-white/20 text-white font-bold" : "text-white/40 hover:text-white")}>

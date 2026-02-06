@@ -60,6 +60,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
     // User Identity
     const [myMemberId, setMyMemberId] = useState<string | null>(null)
     const [myUserId, setMyUserId] = useState<string | null>(null)
+    const [isResetDialogOpen, setIsResetDialogOpen] = useState(false)
 
     // Clear system message after 3 seconds, avoid re-showing same message
     useEffect(() => {
@@ -366,41 +367,43 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                 <div className="flex items-center gap-2">
                     {/* Pin / Settings Button (Destructive Reset) */}
                     {joined && (
-                        <Dialog>
-                            <DialogTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="text-white/60 hover:text-pint-gold p-2 transition-colors active:scale-95"
-                                >
-                                    <MapPin className="w-5 h-5" />
-                                    <span className="sr-only">Location Settings</span>
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent className="bg-charcoal border-white/10 text-white max-w-sm">
-                                <DialogHeader>
-                                    <DialogTitle>Change Location?</DialogTitle>
-                                    <DialogDescription className="text-white/60">
-                                        Warning: Changing your location will <span className="text-red-400 font-bold">RESET</span> the round to the Lobby for everyone.
-                                        <br /><br />
-                                        Are you sure you want to proceed?
-                                    </DialogDescription>
-                                </DialogHeader>
-                                <DialogFooter>
-                                    <Button variant="ghost" className="text-white/40 hover:text-white" onClick={() => { /* Close logic via trigger usually */ }}>Cancel</Button>
-                                    <Button
-                                        variant="destructive"
-                                        className="bg-red-500/20 text-red-400 hover:bg-red-500/40 border border-red-500/50"
-                                        onClick={() => {
-                                            setIsEditingSettings(true)
-                                            // Close dialog handled by parent re-render or explicit state if controlled
-                                        }}
-                                    >
-                                        Yes, Reset Round
-                                    </Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
+                        <div className="relative">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setIsResetDialogOpen(true)}
+                                className="text-white/60 hover:text-pint-gold p-2 transition-colors active:scale-95"
+                            >
+                                <MapPin className="w-5 h-5" />
+                                <span className="sr-only">Location Settings</span>
+                            </Button>
+
+                            <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+                                <DialogContent className="bg-charcoal border-white/10 text-white max-w-sm">
+                                    <DialogHeader>
+                                        <DialogTitle>Change Location?</DialogTitle>
+                                        <DialogDescription className="text-white/60">
+                                            Warning: Changing your location will <span className="text-red-400 font-bold">RESET</span> the round to the Lobby for everyone.
+                                            <br /><br />
+                                            Are you sure you want to proceed?
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <DialogFooter>
+                                        <Button variant="ghost" className="text-white/40 hover:text-white" onClick={() => setIsResetDialogOpen(false)}>Cancel</Button>
+                                        <Button
+                                            variant="destructive"
+                                            className="bg-red-500/20 text-red-400 hover:bg-red-500/40 border border-red-500/50"
+                                            onClick={() => {
+                                                setIsEditingSettings(true)
+                                                setIsResetDialogOpen(false)
+                                            }}
+                                        >
+                                            Yes, Reset Round
+                                        </Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+                        </div>
                     )}
 
 

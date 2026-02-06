@@ -127,9 +127,42 @@ export const maps = {
                 const location = res.data.results[0].geometry.location;
                 return { lat: location.lat, lng: location.lng, formatted_address: res.data.results[0].formatted_address };
             }
+        }
+            return null;
+    } catch(error) {
+        console.error("Geocode Error", error);
+        return null;
+    }
+},
+
+    // Reverse Geocode -> Address
+    reverseGeocode: async (lat: number, lng: number) => {
+        if (!key) throw new Error("Missing Google Maps API Key");
+
+        try {
+            const res = await client.reverseGeocode({
+                params: {
+                    latlng: { lat, lng },
+                    key
+                }
+            });
+
+            if (res.data.results.length > 0) {
+                // Return the first formatted address
+                // We prefer street_address or route but formatted_address is usually good
+                const first = res.data.results[0];
+                const street = first.address_components.find(c => c.types.includes('route' as any))?.long_name;
+                const number = first.address_components.find(c => c.types.includes('street_number' as any))?.long_name;
+
+                if (street) {
+                    return number ? `${number} ${street}` : street;
+                }
+
+                return first.formatted_address.split(',')[0]; // Simple fallback to first part
+            }
             return null;
         } catch (error) {
-            console.error("Geocode Error", error);
+            console.error("Reverse Geocode Error", error);
             return null;
         }
     }
