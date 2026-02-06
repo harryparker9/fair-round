@@ -1,9 +1,10 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
-import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps'
+import { APIProvider, Map, AdvancedMarker, Pin, useMap } from '@vis.gl/react-google-maps'
 import { PartyMember, AreaOption } from '@/types'
-import { X, User } from 'lucide-react'
+import { X, User, MapPin as MapPinIcon } from 'lucide-react'
 
 interface MemberMapModalProps {
     members: PartyMember[]
@@ -14,6 +15,34 @@ interface MemberMapModalProps {
     focusedMemberId?: string
     candidateStations?: AreaOption[]
     winningStation?: AreaOption
+}
+
+// Helper Component for Polylines
+function MapPolyline({ path, options }: { path: google.maps.LatLngLiteral[], options: google.maps.PolylineOptions }) {
+    const map = useMap()
+    const polylineRef = useRef<google.maps.Polyline | null>(null)
+
+    useEffect(() => {
+        if (!map) return
+
+        if (!polylineRef.current) {
+            polylineRef.current = new google.maps.Polyline({
+                ...options,
+                path
+            })
+            polylineRef.current.setMap(map)
+        } else {
+            polylineRef.current.setOptions({ ...options, path })
+        }
+
+        return () => {
+            if (polylineRef.current) {
+                polylineRef.current.setMap(null)
+            }
+        }
+    }, [map, path, options])
+
+    return null
 }
 
 export function MemberMapModal({ members, isOpen, onClose, stationData, mode, focusedMemberId, candidateStations, winningStation }: MemberMapModalProps) {
@@ -31,24 +60,25 @@ export function MemberMapModal({ members, isOpen, onClose, stationData, mode, fo
     }
 
     // Determine Center
-    // If focused member, center on them. Else center on London or centroid.
-    const activeMembers = members.filter(m => m.status === 'ready' && m.location)
+    const activeMembers = members.filter(m => m.status === 'ready')
 
     let defaultCenter = { lat: 51.5074, lng: -0.1278 }
 
     if (focusedMemberId) {
         const m = members.find(m => m.id === focusedMemberId)
         if (m) {
-            const c = getCoords(m, 'start')
+            const c = getCoords(m, 'start') || getCoords(m, 'end')
             if (c) defaultCenter = c
         }
     } else if (activeMembers.length > 0) {
         // Simple Centroid
+        let count = 0
         const sum = activeMembers.reduce((acc, m) => {
-            const c = getCoords(m, 'start')
-            return c ? { lat: acc.lat + c.lat, lng: acc.lng + c.lng } : acc
+            const s = getCoords(m, 'start')
+            if (s) { acc.lat += s.lat; acc.lng += s.lng; count++; }
+            return acc
         }, { lat: 0, lng: 0 })
-        defaultCenter = { lat: sum.lat / activeMembers.length, lng: sum.lng / activeMembers.length }
+        if (count > 0) defaultCenter = { lat: sum.lat / count, lng: sum.lng / count }
     }
 
     // Prepare Title/Header
@@ -84,6 +114,23 @@ export function MemberMapModal({ members, isOpen, onClose, stationData, mode, fo
                     </div>
                 </div>
 
+                {/* Legend */}
+                {mode === 'lobby' || mode === 'single' ? (
+                    <div className="absolute bottom-6 left-4 z-50 pointer-events-none">
+                        <div className="bg-charcoal/90 backdrop-blur-md px-3 py-2 rounded-lg border border-white/10 shadow-xl pointer-events-auto text-[10px] space-y-1">
+                            <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-fairness-green"></span>
+                                <span className="text-white">Start Location</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-orange-400"></span>
+                                <span className="text-white">Return Location</span>
+                            </div>
+                        </div>
+                    </div>
+                ) : null}
+
+
                 <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''}>
                     <Map
                         defaultCenter={defaultCenter}
@@ -91,43 +138,87 @@ export function MemberMapModal({ members, isOpen, onClose, stationData, mode, fo
                         mapId="bf51a910020fa25a"
                         disableDefaultUI={true}
                         className="w-full h-full"
+                        gestureHandling={'greedy'}
                     >
-                        {/* 1. RENDER MEMBERS */}
+                        {/* 1. RENDER MEMBERS & JOURNEYS */}
                         {activeMembers.map(member => {
                             const start = getCoords(member, 'start')
+                            const end = getCoords(member, 'end')
                             const isFocused = member.id === focusedMemberId
 
-                            if (!start) return null
+                            // IF FOCUS MODE: Only show focused member unless we are in lobby overview
+                            if (mode === 'single' && !isFocused) return null
 
-                            // If in Voting/Results mode, usually just show Start? Or Start+End?
-                            // Let's show Start for clarity to avoid clutter, unless single view.
-                            return (
-                                <AdvancedMarker key={member.id} position={start} zIndex={isFocused ? 50 : 10}>
-                                    <div className="flex flex-col items-center group">
-                                        <div className={`
-                                            bg-white text-charcoal text-[10px] font-bold px-2 py-0.5 rounded-full mb-1 shadow-md 
-                                            transition-all group-hover:scale-110 whitespace-nowrap
-                                            ${isFocused ? 'bg-pint-gold scale-110' : 'opacity-80 group-hover:opacity-100'}
-                                        `}>
-                                            {member.name}
-                                        </div>
-                                        {/* Avatar Pin */}
-                                        <div className={`
-                                            w-8 h-8 rounded-full border-2 overflow-hidden shadow-lg relative bg-gray-800
-                                            ${isFocused ? 'border-pint-gold w-10 h-10' : 'border-white'}
-                                        `}>
-                                            {/* Fallback Icon */}
-                                            <div className="absolute inset-0 flex items-center justify-center text-white/50">
-                                                <User className="w-4 h-4" />
+                            // Determine if we should draw line
+                            const drawLine = start && end && (start.lat !== end.lat || start.lng !== end.lng)
+
+                            const elements = []
+
+                            if (start) {
+                                elements.push(
+                                    <AdvancedMarker key={`${member.id}-start`} position={start} zIndex={isFocused ? 60 : 20}>
+                                        <div className="flex flex-col items-center group">
+                                            <div className={`
+                                                bg-fairness-green text-charcoal text-[10px] font-bold px-2 py-0.5 rounded-full mb-1 shadow-md 
+                                                transition-all whitespace-nowrap border border-charcoal/20
+                                                ${isFocused ? 'scale-110' : 'opacity-80 group-hover:opacity-100 group-hover:scale-105'}
+                                            `}>
+                                                {member.name}
                                             </div>
-                                            {/* Image */}
-                                            {member.photo_path && (
-                                                <img src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/temporary_selfies/${member.photo_path}`} className="w-full h-full object-cover relative z-10 transform scale-x-[-1]" />
-                                            )}
+
+                                            {/* Avatar Pin - GREEN BORDER */}
+                                            <div className={`
+                                                w-8 h-8 rounded-full overflow-hidden shadow-lg relative bg-charcoal
+                                                border-2 border-fairness-green transition-transform
+                                                ${isFocused ? 'scale-125 z-50' : ''}
+                                            `}>
+                                                {member.photo_path ? (
+                                                    /* eslint-disable-next-line @next/next/no-img-element */
+                                                    <img src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/temporary_selfies/${member.photo_path}`} className="w-full h-full object-cover transform scale-x-[-1]" alt={member.name} />
+                                                ) : <div className="w-full h-full flex items-center justify-center text-white/50"><User className="w-4 h-4" /></div>}
+                                            </div>
                                         </div>
-                                    </div>
-                                </AdvancedMarker>
-                            )
+                                    </AdvancedMarker>
+                                )
+                            }
+
+                            if (end && drawLine) {
+                                elements.push(
+                                    <AdvancedMarker key={`${member.id}-end`} position={end} zIndex={isFocused ? 55 : 15}>
+                                        <div className="flex flex-col items-center group opacity-80 hover:opacity-100">
+                                            {/* Avatar Pin - ORANGE BORDER */}
+                                            <div className={`
+                                                w-6 h-6 rounded-full overflow-hidden shadow-lg relative bg-charcoal
+                                                border-2 border-orange-400 transition-transform hover:scale-110
+                                            `}>
+                                                <div className="w-full h-full flex items-center justify-center bg-orange-400 text-charcoal text-[8px] font-bold">
+                                                    END
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </AdvancedMarker>
+                                )
+
+                                elements.push(
+                                    <MapPolyline
+                                        key={`${member.id}-line`}
+                                        path={[start, end]}
+                                        options={{
+                                            strokeColor: '#fb923c', // Orange-400
+                                            strokeOpacity: 0.6,
+                                            strokeWeight: 2,
+                                            geodesic: true,
+                                            icons: [{
+                                                icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 2 },
+                                                offset: '0',
+                                                repeat: '10px'
+                                            }]
+                                        }}
+                                    />
+                                )
+                            }
+
+                            return elements
                         })}
 
                         {/* 2. RENDER STATIONS (Voting Mode) */}

@@ -324,6 +324,17 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
         }
     }
 
+    const handleUndoResult = async () => {
+        try {
+            // @ts-ignore
+            await regressStage(roundId)
+            // Realtime will handle the update to 'pub_voting'
+        } catch (e) {
+            console.error(e)
+            alert("Failed to undo")
+        }
+    }
+
     if (loading) return null
 
     // Manual refresh helper
@@ -502,6 +513,8 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                             ? recommendations.filter(r => r.place_id === winningPubId)
                                             : recommendations}
                                         members={uniqueMembers}
+                                        onBack={handleUndoResult}
+                                        isHost={isHost}
                                     />
                                 ) : <p className="text-white">Loading Results...</p>
                             }

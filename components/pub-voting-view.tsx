@@ -131,20 +131,27 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
                         const isSelected = selectedPubId === pub.place_id
                         const myVote = myMember?.vote_pub_id === pub.place_id
                         const pubVotes = votes[pub.place_id] || []
+                        const isArniesChoice = i === 0
 
                         return (
                             <Card
                                 key={pub.place_id}
                                 onClick={() => scrollToPub(pub.place_id)}
                                 className={cn(
-                                    "snap-center w-[85%] shrink-0 p-4 cursor-pointer transition-all border-2 flex flex-col gap-3 shadow-xl h-auto min-h-[180px]",
+                                    "snap-center w-[85%] shrink-0 p-4 cursor-pointer transition-all border-2 flex flex-col gap-3 shadow-xl h-auto min-h-[180px] relative overflow-hidden",
                                     isSelected
                                         ? "border-pint-gold bg-charcoal shadow-[0_5px_20px_rgba(255,215,0,0.15)] scale-100"
                                         : "border-white/5 bg-charcoal/90 scale-95 opacity-80 hover:opacity-100"
                                 )}
                             >
-                                <div className="flex justify-between items-start">
-                                    <div>
+                                {isArniesChoice && (
+                                    <div className="absolute top-0 right-0 bg-fairness-green text-charcoal text-[10px] font-bold px-2 py-1 rounded-bl-lg z-10 shadow-sm">
+                                        Arnie's Pick 🚕
+                                    </div>
+                                )}
+
+                                <div className="flex justify-between items-start mt-1">
+                                    <div className="max-w-[80%]">
                                         <h3 className="font-bold text-lg text-white leading-tight line-clamp-2">
                                             {i + 1}. {pub.name}
                                         </h3>
@@ -161,7 +168,7 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
 
                                 <div className="bg-white/5 p-2 rounded-lg border border-white/5">
                                     <p className="text-xs text-white/80 italic leading-relaxed line-clamp-3">
-                                        {pub.vibe_summary}
+                                        "{pub.vibe_summary}"
                                     </p>
                                 </div>
 
@@ -171,24 +178,14 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
                                         <Button
                                             size="sm"
                                             variant="secondary"
-                                            className={cn("flex-1 text-xs gap-2 h-8", myVote ? "bg-fairness-green/20 text-fairness-green border-fairness-green/50" : "hover:bg-pint-gold/10 hover:text-pint-gold hover:border-pint-gold/50")}
+                                            className={cn("flex-1 text-xs gap-2 h-8 transition-all", myVote ? "bg-fairness-green/20 text-fairness-green border-fairness-green/50 shadow-[0_0_10px_rgba(74,222,128,0.2)]" : "hover:bg-pint-gold/10 hover:text-pint-gold hover:border-pint-gold/50")}
                                             onClick={(e) => {
                                                 e.stopPropagation()
                                                 onVote(pub.place_id)
                                             }}
                                         >
-                                            <ThumbsUp className="w-3 h-3" />
+                                            <ThumbsUp className={cn("w-3 h-3", myVote && "fill-current")} />
                                             {myVote ? 'Voted' : 'Vote'}
-                                        </Button>
-                                    )}
-                                    {isHost && !readOnly && (
-                                        <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            className="h-8 px-2 text-white/40 hover:text-white"
-                                            onClick={(e) => { e.stopPropagation(); onConfirmWinner(pub.place_id) }}
-                                        >
-                                            🏆 Pick
                                         </Button>
                                     )}
                                 </div>
@@ -200,7 +197,12 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
 
             {/* SCOREBOARD SECTION */}
             <div className="flex-1 bg-white/5 rounded-t-2xl border-t border-white/10 p-4 space-y-3 overflow-y-auto">
-                <h3 className="text-xs font-bold text-white/50 uppercase tracking-widest text-center">Scoreboard</h3>
+                <div className="flex justify-between items-center px-2">
+                    <h3 className="text-xs font-bold text-white/50 uppercase tracking-widest">Scoreboard</h3>
+                    {isHost && !readOnly && (
+                        <span className="text-[10px] text-pint-gold animate-pulse">Tap 'Pick' to Lock In</span>
+                    )}
+                </div>
 
                 {Object.entries(votes)
                     .sort(([, a], [, b]) => b.length - a.length)
@@ -208,7 +210,7 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
                         const pub = pubs.find(p => p.place_id === pubId)
                         if (!pub) return null
                         return (
-                            <div key={pubId} className="flex items-center gap-3 bg-white/5 p-2 rounded-lg animate-fade-in-up group">
+                            <div key={pubId} className="flex items-center gap-3 bg-white/5 p-2 rounded-lg animate-fade-in-up group border border-white/5 hover:border-white/10 transition-colors">
                                 <div className="w-8 h-8 flex items-center justify-center bg-white/10 rounded font-bold text-white text-xs shrink-0">
                                     {voters.length}
                                 </div>
@@ -235,10 +237,15 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
                                     <Button
                                         size="sm"
                                         variant="primary"
-                                        className="h-8 px-3 bg-pint-gold text-black hover:bg-pint-gold/80 font-bold opacity-0 group-hover:opacity-100 transition-opacity"
-                                        onClick={(e) => { e.stopPropagation(); onConfirmWinner(pub.place_id) }}
+                                        className="h-8 px-3 bg-pint-gold text-black hover:bg-pint-gold/80 font-bold shadow-lg opacity-100 transform active:scale-95 transition-all"
+                                        onClick={(e) => {
+                                            if (confirm(`Lock in ${pub.name} as the winner? This will end voting.`)) {
+                                                e.stopPropagation();
+                                                onConfirmWinner(pub.place_id)
+                                            }
+                                        }}
                                     >
-                                        Pick
+                                        🏆 Check
                                     </Button>
                                 )}
                             </div>

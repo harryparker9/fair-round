@@ -12,9 +12,11 @@ import { Share2, Download, Loader2 } from "lucide-react"
 interface ResultsViewProps {
     recommendations: PubRecommendation[]
     members?: PartyMember[]
+    onBack?: () => void
+    isHost?: boolean
 }
 
-export function ResultsView({ recommendations, members = [] }: ResultsViewProps) {
+export function ResultsView({ recommendations, members = [], onBack, isHost }: ResultsViewProps) {
     const ticketRef = useRef<HTMLDivElement>(null)
     const [isSharing, setIsSharing] = useState(false)
 
@@ -55,9 +57,20 @@ export function ResultsView({ recommendations, members = [] }: ResultsViewProps)
 
     return (
         <div className="w-full max-w-lg flex flex-col gap-6 p-4">
-            <div className="text-center space-y-2 animate-fade-in-up">
+            <div className="text-center space-y-2 animate-fade-in-up relative">
                 <h2 className="text-3xl font-bold text-white">The Verdict</h2>
                 <p className="text-white/60">Here are the fairest spots for your group.</p>
+
+                {isHost && onBack && (
+                    <button
+                        onClick={() => {
+                            if (confirm("Undo this result and go back to voting?")) onBack()
+                        }}
+                        className="absolute top-0 right-0 text-[10px] text-red-400 hover:text-red-300 hover:underline"
+                    >
+                        Undo Result
+                    </button>
+                )}
             </div>
 
             {/* Hidden Ticket for Generation */}
