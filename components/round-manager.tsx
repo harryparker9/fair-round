@@ -326,9 +326,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
 
     const handleUndoResult = async () => {
         try {
-            // @ts-ignore
-            await regressStage(roundId)
-            // Realtime will handle the update to 'pub_voting'
+            await regressStage(roundId, stage)
         } catch (e) {
             console.error(e)
             alert("Failed to undo")

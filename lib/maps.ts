@@ -127,13 +127,12 @@ export const maps = {
                 const location = res.data.results[0].geometry.location;
                 return { lat: location.lat, lng: location.lng, formatted_address: res.data.results[0].formatted_address };
             }
-        }
             return null;
-    } catch(error) {
-        console.error("Geocode Error", error);
-        return null;
-    }
-},
+        } catch (error) {
+            console.error("Geocode Error", error);
+            return null;
+        }
+    },
 
     // Reverse Geocode -> Address
     reverseGeocode: async (lat: number, lng: number) => {

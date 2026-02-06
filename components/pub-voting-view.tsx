@@ -43,13 +43,22 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
 
     const handleScroll = () => {
         if (!carouselRef.current) return
+
         const scrollLeft = carouselRef.current.scrollLeft
         const width = carouselRef.current.offsetWidth
-        const index = Math.round(scrollLeft / (width * 0.85)) // Assuming card width is ~85%
+        const cardWidth = width * 0.85 // 85% width
+        const gap = 12 // gap-3 is 12px
+
+        // Calculate index based on center point
+        const centerPoint = scrollLeft + (width / 2)
+        const itemStride = cardWidth + gap
+
+        // Adjust for padding (32px / 2rem)
+        const effectiveScroll = scrollLeft
+        const index = Math.round(effectiveScroll / itemStride)
+
         if (pubs[index] && pubs[index].place_id !== selectedPubId) {
-            // We could auto-select, but that might jitter the map. 
-            // Better to let user CLICK to select, or select on snap stop.
-            // For now, let's keep it simple: Click map = scroll there. Scroll = just view.
+            setSelectedPubId(pubs[index].place_id)
         }
     }
 
@@ -58,11 +67,17 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
         const index = pubs.findIndex(p => p.place_id === pubId)
         if (index !== -1 && carouselRef.current) {
             const width = carouselRef.current.offsetWidth
-            // Card width + Gap. Card is w-[85%] -> width * 0.85
             const cardWidth = width * 0.85
-            const gap = 16 // 4 rem roughly
+            const gap = 12
+
+            // Center the item
+            // scrollPos = (index * stride) - (containerWidth/2) + (cardWidth/2) - paddingAdjustment
+            // Simplest is to scroll to the start of the item, minus padding/centering offset
+            const stride = cardWidth + gap
+            const centerOffset = (width - cardWidth) / 2
+
             carouselRef.current.scrollTo({
-                left: index * (cardWidth + 12), // 12 is gap-3
+                left: (index * stride) - (centerOffset - 32), // 32 is pl-8
                 behavior: 'smooth'
             })
         }
@@ -92,16 +107,16 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
                                 onClick={() => scrollToPub(pub.place_id)}
                                 zIndex={selectedPubId === pub.place_id ? 50 : 10}
                             >
-                                <div className={`flex flex-col items-center group cursor-pointer transition-transform ${selectedPubId === pub.place_id ? 'scale-125 z-50' : 'scale-90 opacity-80'}`}>
+                                <div className={`flex flex-col items-center group cursor-pointer transition-transform duration-300 ${selectedPubId === pub.place_id ? 'scale-125 z-50' : 'scale-90 opacity-80'}`}>
                                     <Pin
                                         background={selectedPubId === pub.place_id ? '#FFD700' : '#333'}
                                         borderColor={'#FFF'}
                                         glyphColor={selectedPubId === pub.place_id ? '#000' : '#FFF'}
                                         scale={selectedPubId === pub.place_id ? 1.3 : 1.0}
                                     />
-                                    {/* Simple Label */}
+                                    {/* Only show label if selected */}
                                     {selectedPubId === pub.place_id && (
-                                        <div className="mt-1 px-2 py-1 bg-charcoal text-white text-[10px] font-bold rounded border border-white/20 whitespace-nowrap shadow-xl">
+                                        <div className="mt-1 px-2 py-1 bg-charcoal text-white text-[10px] font-bold rounded border border-white/20 whitespace-nowrap shadow-xl animate-in fade-in slide-in-from-bottom-1">
                                             {pub.name}
                                         </div>
                                     )}
@@ -113,7 +128,7 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
 
                 {/* Voting Prompt Overlay */}
                 {!hasVoted && !readOnly && (
-                    <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
+                    <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2 pointer-events-none">
                         <span className="w-2 h-2 rounded-full bg-pint-gold animate-pulse" />
                         <span className="text-white text-xs font-bold">Cast your vote!</span>
                     </div>
@@ -124,6 +139,7 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
             <div className="relative -mt-12 z-20">
                 <div
                     ref={carouselRef}
+                    onScroll={handleScroll}
                     className="flex overflow-x-auto snap-x snap-mandatory gap-3 px-8 pb-4 hide-scrollbar"
                     style={{ scrollPaddingLeft: '2rem' }}
                 >
@@ -140,7 +156,7 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
                                 className={cn(
                                     "snap-center w-[85%] shrink-0 p-4 cursor-pointer transition-all border-2 flex flex-col gap-3 shadow-xl h-auto min-h-[180px] relative overflow-hidden",
                                     isSelected
-                                        ? "border-pint-gold bg-charcoal shadow-[0_5px_20px_rgba(255,215,0,0.15)] scale-100"
+                                        ? "border-pint-gold bg-charcoal shadow-[0_5px_20px_rgba(255,215,0,0.15)] scale-100 z-10"
                                         : "border-white/5 bg-charcoal/90 scale-95 opacity-80 hover:opacity-100"
                                 )}
                             >
@@ -200,7 +216,7 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
                 <div className="flex justify-between items-center px-2">
                     <h3 className="text-xs font-bold text-white/50 uppercase tracking-widest">Scoreboard</h3>
                     {isHost && !readOnly && (
-                        <span className="text-[10px] text-pint-gold animate-pulse">Tap 'Pick' to Lock In</span>
+                        <span className="text-[10px] text-pint-gold animate-pulse">Tap below to Finish</span>
                     )}
                 </div>
 
@@ -237,15 +253,13 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
                                     <Button
                                         size="sm"
                                         variant="primary"
-                                        className="h-8 px-3 bg-pint-gold text-black hover:bg-pint-gold/80 font-bold shadow-lg opacity-100 transform active:scale-95 transition-all"
+                                        className="h-8 px-3 bg-pint-gold text-black hover:bg-pint-gold/80 font-bold shadow-lg opacity-100 transform active:scale-95 transition-all whitespace-nowrap"
                                         onClick={(e) => {
-                                            if (confirm(`Lock in ${pub.name} as the winner? This will end voting.`)) {
-                                                e.stopPropagation();
-                                                onConfirmWinner(pub.place_id)
-                                            }
+                                            e.stopPropagation();
+                                            onConfirmWinner(pub.place_id)
                                         }}
                                     >
-                                        🏆 Check
+                                        Announce Winner
                                     </Button>
                                 )}
                             </div>
