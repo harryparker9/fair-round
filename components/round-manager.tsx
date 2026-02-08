@@ -121,6 +121,12 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                     setAiStrategy(roundData.settings.ai_strategy)
                 }
 
+                if (roundData.settings?.is_calculating) {
+                    setGeneratingAreas(true)
+                } else {
+                    setGeneratingAreas(false)
+                }
+
                 // Set initial message only if new
                 if (roundData.settings?.system_message && roundData.settings.system_message !== lastSystemMessage.current) {
                     setSystemMessage(roundData.settings.system_message)
@@ -176,6 +182,10 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                     if (newRound.settings?.system_message && newRound.settings.system_message !== lastSystemMessage.current) {
                         setSystemMessage(newRound.settings.system_message)
                         lastSystemMessage.current = newRound.settings.system_message
+                    }
+
+                    if (newRound.settings?.is_calculating !== undefined) {
+                        setGeneratingAreas(newRound.settings.is_calculating)
                     }
 
                     // Fetch recommendations if moving to pub_voting or results

@@ -20,17 +20,21 @@ export async function startAreaVoting(roundId: string) {
         const { data: round } = await supabase.from('rounds').select('settings').eq('id', roundId).single()
         const meetingTime = round?.settings?.meeting_time || undefined;
 
+        // Update Round: save options and move to 'voting' stage
+        const db = supabaseAdmin || supabase; // Prefer admin
+
+        // 0. Set Loading State
+        await db.from('rounds').update({ settings: { ...round?.settings, is_calculating: true } }).eq('id', roundId)
+
         // Generate Options (Gemini + Distance Matrix)
         const { strategy, recommendations } = await triangulationService.findBestStations(members, meetingTime)
 
-        // Update Round: save options and move to 'voting' stage
-        const db = supabaseAdmin || supabase; // Prefer admin
         const { error } = await db
             .from('rounds')
             .update({
                 stage: 'voting',
                 area_options: recommendations,
-                settings: { ...round?.settings, ai_strategy: strategy } // Save Global Strategy
+                settings: { ...round?.settings, ai_strategy: strategy, is_calculating: false } // Save Global Strategy & Clear Loading
             })
             .eq('id', roundId)
 

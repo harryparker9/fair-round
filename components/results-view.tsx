@@ -61,15 +61,6 @@ export function ResultsView({ recommendations, members = [], onBack, isHost }: R
                 <h2 className="text-3xl font-bold text-white">The Verdict</h2>
                 <p className="text-white/60">Here are the fairest spots for your group.</p>
 
-                {isHost && onBack && (
-                    <button
-                        onClick={() => {
-                            if (confirm("Undo this result and go back to voting?")) onBack()
-                        }}
-                        className="absolute top-0 right-0 text-[10px] text-red-400 hover:text-red-300 hover:underline"
-                    >
-                        Undo Result
-                    </button>
                 )}
             </div>
 

@@ -86,7 +86,7 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
     const hasVoted = !!myMember?.vote_pub_id
 
     return (
-        <div className="w-full max-w-lg space-y-4 animate-fade-in flex flex-col h-full relative">
+        <div className="w-full max-w-lg space-y-4 animate-fade-in flex flex-col min-h-full relative pb-10">
 
             {/* MAP SECTION */}
             <div className="w-full h-1/2 min-h-[40vh] rounded-xl overflow-hidden border border-white/10 shrink-0 relative shadow-2xl">
@@ -182,10 +182,35 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
                                     </div>
                                 </div>
 
-                                <div className="bg-white/5 p-2 rounded-lg border border-white/5">
-                                    <p className="text-xs text-white/80 italic leading-relaxed line-clamp-3">
+                                <div
+                                    className="bg-white/5 p-2 rounded-lg border border-white/5 cursor-pointer active:scale-[0.98] transition-transform"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        // Simple toggle via class is hard without component state per item.
+                                        // Let's use a class logic with a specific ID or just force it to always expand on click?
+                                        // Actually, let's just make it expandable via local state if we extract component,
+                                        // OR simpler: just `active:line-clamp-none`? No, user wants it to stay open or be openable.
+                                        // Let's use a data attribute or class toggle on the element itself?
+                                        // React way: We need state. But mapping inside. 
+                                        // HACK: manipulating the class directly or using a small internal component.
+                                        // Let's replace this card content with a extracted component or just use a dirty trick?
+                                        // Better: Extract card to sub-component to handle state? formatting is complex.
+                                        // Simplest: Check if we can just make it scrollable? "Expand to see all".
+                                        // Let's try making it standard line-clamp-3 but if clicked, it removes the class.
+                                        const el = e.currentTarget.querySelector('p');
+                                        if (el) {
+                                            if (el.classList.contains('line-clamp-3')) {
+                                                el.classList.remove('line-clamp-3');
+                                            } else {
+                                                el.classList.add('line-clamp-3');
+                                            }
+                                        }
+                                    }}
+                                >
+                                    <p className="text-xs text-white/80 italic leading-relaxed line-clamp-3 transition-all select-none">
                                         "{pub.vibe_summary}"
                                     </p>
+                                    <p className="text-[9px] text-white/30 text-right mt-1 uppercase tracking-wider">Tap to expand</p>
                                 </div>
 
                                 {/* Actions */}
@@ -212,7 +237,7 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
             </div>
 
             {/* SCOREBOARD SECTION */}
-            <div className="flex-1 bg-white/5 rounded-t-2xl border-t border-white/10 p-4 space-y-3 overflow-y-auto">
+            <div className="w-full bg-white/5 rounded-t-2xl border-t border-white/10 p-4 space-y-3 pb-32">
                 <div className="flex justify-between items-center px-2">
                     <h3 className="text-xs font-bold text-white/50 uppercase tracking-widest">Scoreboard</h3>
                     {isHost && !readOnly && (

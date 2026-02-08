@@ -121,8 +121,15 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
                                         <p className="text-xs text-white/50 line-clamp-1">{area.description}</p>
                                     </div>
                                     <div className="text-right">
-                                        <div className="text-2xl font-mono font-bold text-white leading-none">{area.scoring?.avg_time}m</div>
-                                        <div className="text-[10px] text-white/30 uppercase mt-0.5">Avg Travel</div>
+                                        <div className="flex flex-col items-end">
+                                            <div className="text-xs font-mono font-bold text-white leading-none">
+                                                <span className="text-fairness-green">Go: {Math.round(Object.values(area.travel_times).reduce((acc, t) => acc + t.to, 0) / Object.values(area.travel_times).length)}m</span>
+                                            </div>
+                                            <div className="text-xs font-mono font-bold text-white leading-none mt-1">
+                                                <span className="text-white/60">Ret: {Math.round(Object.values(area.travel_times).reduce((acc, t) => acc + t.home, 0) / Object.values(area.travel_times).length)}m</span>
+                                            </div>
+                                        </div>
+                                        <div className="text-[9px] text-white/30 uppercase mt-1">Avg Travel</div>
                                     </div>
                                 </div>
 
@@ -218,7 +225,7 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
                                                             "text-xs font-mono font-bold",
                                                             (time.to + time.home) > 90 ? "text-red-400" : "text-fairness-green"
                                                         )}>
-                                                            {time.to + time.home}m Total
+                                                            ({time.to + time.home}m total)
                                                         </span>
                                                     </div>
 
