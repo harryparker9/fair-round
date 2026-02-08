@@ -61,7 +61,7 @@ export function ResultsView({ recommendations, members = [], onBack, isHost }: R
                 <h2 className="text-3xl font-bold text-white">The Verdict</h2>
                 <p className="text-white/60">Here are the fairest spots for your group.</p>
 
-                )}
+
             </div>
 
             {/* Hidden Ticket for Generation */}
