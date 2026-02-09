@@ -100,11 +100,6 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
                 <h2 className="text-xl font-headline text-white mb-1">Where are we meeting?</h2>
                 <div className="flex justify-between items-end">
                     <p className="text-sm text-white/60 mb-3">Vote for the best compromise.</p>
-
-                    {/* Clearer Call to Action */}
-                    {/* <div className="text-xs text-pint-gold font-bold uppercase tracking-wider mb-3 animate-pulse">
-                        👇 Vote Below
-                    </div> */}
                 </div>
 
                 {/* AI Global Strategy Card */}
@@ -152,19 +147,25 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
                             <div className="p-4 relative z-10">
 
                                 <div className="text-center mb-3">
-                                    <h3 className={cn("text-xl font-bold mb-1", isSelected ? "text-pint-gold" : "text-white")}>
+                                    <h3 className={cn("text-xl font-bold mb-2", isSelected ? "text-pint-gold" : "text-white")}>
                                         {area.name}
                                     </h3>
 
-                                    {/* Avg Times - Unbunched */}
-                                    <div className="flex justify-center items-center gap-4 text-xs font-mono font-bold">
-                                        <span className="text-fairness-green bg-fairness-green/10 px-2 py-1 rounded">Go: {avgTo}m</span>
-                                        <span className="text-white/60 bg-white/5 px-2 py-1 rounded">Ret: {avgHome}m</span>
+                                    {/* Avg Times - Vertical and Clearer - ROUND 2 FIX */}
+                                    <div className="flex flex-col items-center gap-1.5 text-xs font-medium text-white/80">
+                                        <div className="bg-white/5 px-3 py-1.5 rounded-lg w-full max-w-[200px] flex justify-between items-center">
+                                            <span className="text-white/50 text-[10px] uppercase tracking-wider">Avg travel to {area.name}</span>
+                                            <span className="font-mono font-bold text-fairness-green text-sm">{avgTo}m</span>
+                                        </div>
+                                        <div className="bg-white/5 px-3 py-1.5 rounded-lg w-full max-w-[200px] flex justify-between items-center">
+                                            <span className="text-white/50 text-[10px] uppercase tracking-wider">Avg return travel</span>
+                                            <span className="font-mono font-bold text-white/80 text-sm">{avgHome}m</span>
+                                        </div>
                                     </div>
                                 </div>
 
                                 {/* Actions */}
-                                <div className="flex gap-3 mb-2">
+                                <div className="flex gap-3 mb-2 mt-4">
                                     <Button
                                         variant={isSelected ? "primary" : "secondary"}
                                         className="flex-1 h-10 text-xs uppercase tracking-wider"
@@ -202,20 +203,23 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
                                         </div>
                                     )}
 
-                                    {/* VERACITY CHECK REMOVED */}
-
                                     <div className="space-y-4">
                                         <h4 className="text-xs font-bold text-white/40 uppercase">Full Breakdown</h4>
                                         <div className="grid grid-cols-1 gap-3">
-                                            {Object.entries(area.travel_times).map(([memberId, time]) => {
-                                                const member = members.find(m => m.id === memberId)
-                                                const name = member?.name || "Member"
+                                            {/* Note: The key in travel_times is actually the Name, not ID, from backend */}
+                                            {Object.entries(area.travel_times).map(([keyName, time]) => {
+                                                // Try to find member by name if key is name, or ID if ID. 
+                                                // Backend currently sends Name as key.
+                                                // Map ID to Member to check for custom location masking.
+                                                const member = members.find(m => m.name === keyName || m.id === keyName)
+                                                const displayMemberId = member?.id || keyName
                                                 const isTotalLong = (time.to + time.home) > 90
 
                                                 return (
-                                                    <div key={memberId} className="flex flex-col bg-white/5 p-3 rounded-lg gap-2 border border-white/5">
+                                                    <div key={keyName} className="flex flex-col bg-white/5 p-3 rounded-lg gap-2 border border-white/5">
                                                         <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                                                            <span className="text-sm font-bold text-white/90">{name}</span>
+                                                            {/* User requested actual name, keyName is the name */}
+                                                            <span className="text-sm font-bold text-white/90">{keyName}</span>
                                                             <span className={cn(
                                                                 "text-xs font-mono font-bold",
                                                                 isTotalLong ? "text-red-400" : "text-fairness-green"
@@ -224,22 +228,31 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
                                                             </span>
                                                         </div>
 
-                                                        {/* Outbound */}
-                                                        <div className="flex justify-between text-xs items-center">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-white/40 uppercase text-[10px] tracking-wider w-8">To:</span>
-                                                                <span className="text-white/80">{time.start_name || "Start"} → {area.name}</span>
+                                                        {/* Outbound - ROUND 2 FIX: Added journey summary */}
+                                                        <div className="flex flex-col gap-1 text-xs">
+                                                            <div className="flex justify-between items-center text-white/40 text-[10px] uppercase tracking-wider">
+                                                                <span>To Station</span>
+                                                                <span className="font-mono font-bold text-fairness-green text-xs">{time.to}m</span>
                                                             </div>
-                                                            <span className="font-mono font-bold text-fairness-green">{time.to}m</span>
+                                                            <div className="text-white/80">
+                                                                {time.summary_to || `${time.start_name} → ${area.name}`}
+                                                            </div>
                                                         </div>
 
-                                                        {/* Return */}
-                                                        <div className="flex justify-between text-xs items-center">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-white/40 uppercase text-[10px] tracking-wider w-8">Ret:</span>
-                                                                <span className="text-white/80">{area.name} → {getDisplayName(time.end_name, memberId, 'end')}</span>
+                                                        {/* Return - ROUND 2 FIX: Added journey summary + masking */}
+                                                        <div className="flex flex-col gap-1 text-xs border-t border-white/5 pt-2">
+                                                            <div className="flex justify-between items-center text-white/40 text-[10px] uppercase tracking-wider">
+                                                                <span>Return Journey</span>
+                                                                <span className="font-mono font-bold text-fairness-green text-xs">{time.home}m</span>
                                                             </div>
-                                                            <span className="font-mono font-bold text-fairness-green">{time.home}m</span>
+                                                            <div className="text-white/80">
+                                                                {/* Use custom location masking if applicable */}
+                                                                {time.summary_home ? (
+                                                                    time.summary_home
+                                                                ) : (
+                                                                    `${area.name} → ${getDisplayName(time.end_name, displayMemberId, 'end')}`
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 )
@@ -276,7 +289,7 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
             }
 
             <div className="text-center text-[10px] text-white/20 pb-4">
-                You are: {members.find(m => m.id === currentUserMemberId)?.name || "Unknown"}
+                You are: {members.find(m => m.id === currentUserMemberId)?.name || "Unknown"} ({currentUserMemberId})
             </div>
         </div>
     )
