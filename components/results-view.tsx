@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 import { PubRecommendation, PartyMember } from "@/types"
 import { Card } from "./ui/card"
 import { Button } from "./ui/button"
@@ -19,6 +19,40 @@ interface ResultsViewProps {
 export function ResultsView({ recommendations, members = [], onBack, isHost }: ResultsViewProps) {
     const ticketRef = useRef<HTMLDivElement>(null)
     const [isSharing, setIsSharing] = useState(false)
+    const [hasCelebrated, setHasCelebrated] = useState(false)
+
+    // Confetti Effect on Mount
+    useEffect(() => {
+        if (recommendations.length > 0 && !hasCelebrated) {
+            setHasCelebrated(true)
+            import('canvas-confetti').then((confetti) => {
+                const duration = 3000;
+                const end = Date.now() + duration;
+
+                const frame = () => {
+                    confetti.default({
+                        particleCount: 2,
+                        angle: 60,
+                        spread: 55,
+                        origin: { x: 0 },
+                        colors: ['#FFD700', '#FFFFFF']
+                    });
+                    confetti.default({
+                        particleCount: 2,
+                        angle: 120,
+                        spread: 55,
+                        origin: { x: 1 },
+                        colors: ['#FFD700', '#FFFFFF']
+                    });
+
+                    if (Date.now() < end) {
+                        requestAnimationFrame(frame);
+                    }
+                };
+                frame();
+            })
+        }
+    }, [recommendations, hasCelebrated])
 
     const handleShare = async () => {
         if (!ticketRef.current) return

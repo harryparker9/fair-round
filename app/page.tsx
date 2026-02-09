@@ -66,7 +66,7 @@ export default function Home() {
               <div className="grid grid-cols-2 gap-4 w-full px-2">
                 <button
                   onClick={() => { setActionType('create'); setView('action'); }}
-                  className="group relative overflow-hidden rounded-[2rem] bg-white/5 border border-white/10 p-4 md:p-8 hover:bg-pint-gold/10 hover:border-pint-gold/50 transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(255,215,0,0.2)]"
+                  className="group relative overflow-hidden rounded-[2rem] bg-white/5 border border-white/10 p-4 md:p-8 hover:bg-pint-gold/10 hover:border-pint-gold/50 transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(255,215,0,0.2)] animate-pulse-subtle"
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-pint-gold/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                   <div className="flex flex-col items-center gap-3 relative z-10">

@@ -42,7 +42,7 @@ export function LoadingNarrative({ active = false }: { active: boolean }) {
     const MESSAGES = [
         "Right then! I'm sending everyone's start and end points over to Gemini to figure out the rough best areas...",
         "Now for the nitty-gritty. I'm checking with TfL to get the exact travel times, factoring in live delays. This might take a minute...",
-        "Almost there. Just narrowing it down to the top 3 fairest meeting points..."
+        "Almost there. Just narrowing it down to the top 3 fairest meeting points. Get your coat!"
     ]
 
     return (
