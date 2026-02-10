@@ -143,7 +143,7 @@ export function CreateRoundCard({ initialTab = 'create', onBack }: CreateRoundCa
                             <label className="text-xs text-white/50 uppercase tracking-widest font-bold ml-1">Meeting Time</label>
                             <input
                                 type="datetime-local"
-                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 text-sm focus:outline-none focus:ring-2 focus:ring-pint-gold transition-all"
+                                className="w-full max-w-full bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-white placeholder:text-white/30 text-sm focus:outline-none focus:ring-2 focus:ring-pint-gold transition-all appearance-none"
                                 defaultValue={new Date(new Date().setMinutes(new Date().getMinutes() - new Date().getTimezoneOffset())).toISOString().slice(0, 16)}
                                 id="meeting-time"
                             />
