@@ -207,10 +207,9 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
                                         }
                                     }}
                                 >
-                                    <p className="text-xs text-white/80 italic leading-relaxed line-clamp-3 transition-all select-none">
+                                    <p className="text-xs text-white/80 italic leading-relaxed transition-all select-none">
                                         "{pub.vibe_summary}"
                                     </p>
-                                    <p className="text-[9px] text-white/30 text-right mt-1 uppercase tracking-wider">Tap to expand</p>
                                 </div>
 
                                 {/* Actions */}

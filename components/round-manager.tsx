@@ -17,6 +17,7 @@ import { LogOut, Settings, Users, ChevronDown, MapPin, Trash2 } from 'lucide-rea
 import { MemberMapModal } from '@/components/member-map-modal'
 import { PubVotingView } from '@/components/pub-voting-view'
 import { useArnieHelp } from '@/components/arnie-help-context'
+import { useGeocodedNames } from '@/hooks/use-geocoded-names'
 
 interface RoundManagerProps {
     roundId: string
@@ -260,6 +261,8 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
 
         setHelp({ title, content })
     }, [stage, setHelp])
+
+    const { getStartName, getEndName } = useGeocodedNames(members)
 
     const handleJoin = (memberId: string) => {
         setJoined(true)
@@ -601,8 +604,10 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                                 let startText = 'Location Pending'
                                                 if (member.start_location_type === 'station' && member.start_station_id) {
                                                     startText = stationData[member.start_station_id]?.name || 'Station'
-                                                } else if (member.start_location_type === 'live' || member.start_location_type === 'custom') {
-                                                    startText = member.location?.address || 'Pinned Location'
+                                                } else {
+                                                    const name = getStartName(member)
+                                                    startText = (name === 'Pinned Location') ? 'Near Location' : (name || 'Near Location')
+
                                                     // Keep it short
                                                     if (startText.length > 25) startText = startText.split(',')[0] + '...'
                                                 }
@@ -611,8 +616,11 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                                 let endText = null
                                                 if (member.end_location_type === 'station' && member.end_station_id) {
                                                     endText = stationData[member.end_station_id]?.name || 'Station'
-                                                } else if (member.end_location_type === 'custom') {
-                                                    endText = 'Custom Return'
+                                                } else if (member.end_location_type === 'same') {
+                                                    endText = "Returns to Start"
+                                                } else {
+                                                    const name = getEndName(member)
+                                                    endText = name || 'Different Return'
                                                 }
 
                                                 return (
@@ -728,10 +736,16 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                     if (!pendingWinningAreaId) return
                     setGeneratingAreas(true)
                     try {
+                        const minDelay = new Promise(resolve => setTimeout(resolve, 3000));
                         // @ts-ignore - preferences handling added next
-                        await finalizeVoting(roundId, pendingWinningAreaId, prefs.filters, prefs.radius)
+                        await Promise.all([
+                            // @ts-ignore
+                            finalizeVoting(roundId, pendingWinningAreaId, prefs.filters, prefs.radius),
+                            minDelay
+                        ])
                         setShowSearchPrefs(false)
                     } catch (e) {
+
                         console.error(e)
                         alert('Failed to find pubs. Try again.')
                     } finally {

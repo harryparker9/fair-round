@@ -1,5 +1,6 @@
 import { X, MapPin, Train, Home } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useGeocodedNames } from '@/hooks/use-geocoded-names'
 
 interface PartyMemberRosterProps {
     members: any[]
@@ -12,6 +13,8 @@ interface PartyMemberRosterProps {
 }
 
 export function PartyMemberRoster({ members, isOpen, onClose, isHost, roundHostId, currentStage, stationNames = {} }: PartyMemberRosterProps) {
+    const { getStartName, getEndName } = useGeocodedNames(members)
+
     if (!isOpen) return null
 
     return (
@@ -39,8 +42,9 @@ export function PartyMemberRoster({ members, isOpen, onClose, isHost, roundHostI
                         let startText = 'Location Set'
                         if (member.start_location_type === 'station') {
                             startText = stationNames[member.start_station_id] || 'Station'
-                        } else if (member.start_location_type === 'live' || member.start_location_type === 'custom') {
-                            startText = member.location?.address || 'Pinned Location'
+                        } else {
+                            const name = getStartName(member)
+                            startText = (name === 'Pinned Location') ? 'Near Location' : (name || 'Near Location')
                             // Clean up address (remove postcode if too long)
                             if (startText.length > 30) startText = startText.split(',')[0] + '...'
                         }
@@ -49,9 +53,11 @@ export function PartyMemberRoster({ members, isOpen, onClose, isHost, roundHostI
                         let endText = 'Returns to Start'
                         if (member.end_location_type === 'station') {
                             endText = stationNames[member.end_station_id] || 'Station Base'
-                        } else if (member.end_location_type === 'custom') {
-                            // Uses coordinates, so no address stored usually. 
-                            endText = 'Custom Return'
+                        } else if (member.end_location_type === 'same') {
+                            endText = 'Returns to Start'
+                        } else {
+                            const name = getEndName(member)
+                            endText = name || 'Different Return'
                         }
 
                         return (
@@ -101,7 +107,7 @@ export function PartyMemberRoster({ members, isOpen, onClose, isHost, roundHostI
                                         {member.end_location_type === 'same' && (
                                             <div className="flex items-center gap-1.5 text-xs text-white/30">
                                                 <Home className="w-3 h-3" />
-                                                <span>Return same</span>
+                                                <span>Returns to Start</span>
                                             </div>
                                         )}
                                     </div>

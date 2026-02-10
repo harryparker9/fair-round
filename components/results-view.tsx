@@ -144,7 +144,7 @@ export function ResultsView({ recommendations, members = [], onBack, isHost }: R
                             </div>
 
                             <div className="space-y-2 pt-2 border-t border-white/5">
-                                <h4 className="text-[10px] uppercase text-white/40 tracking-wider">Travel Times (Transit/Walk)</h4>
+                                {/* HEADER REMOVED */}
                                 <div className="grid grid-cols-2 gap-2">
                                     {Object.entries(pub.travel_times).map(([name, time]) => (
                                         <div key={name} className="flex justify-between items-center bg-white/5 px-2 py-1 rounded">
