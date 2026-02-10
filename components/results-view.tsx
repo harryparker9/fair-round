@@ -188,6 +188,19 @@ export function ResultsView({ recommendations, members = [], onBack, isHost }: R
                     </motion.div>
                 ))}
             </div>
+                ))}
         </div>
+
+            {/* Host Undo Button */ }
+    {
+        isHost && onBack && (
+            <div className="w-full flex justify-center pb-4 pt-4 border-t border-white/5">
+                <Button variant="ghost" onClick={onBack} className="text-white/30 hover:text-white text-xs">
+                    ← Undo: Back to Pub Voting
+                </Button>
+            </div>
+        )
+    }
+        </div >
     )
 }

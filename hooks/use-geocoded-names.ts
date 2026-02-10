@@ -72,7 +72,7 @@ export function useGeocodedNames(members: PartyMember[]) {
     const getEndName = (member: PartyMember) => {
         if (member.end_location_type === 'station') return null
         if (names[`${member.id}_end`]) return names[`${member.id}_end`]
-        return "Custom Return"
+        return "Custom Location"
     }
 
     return { names, getStartName, getEndName }

@@ -166,6 +166,7 @@ export const gemini = {
            - RELY ONLY ON THE CONTEXT. Do not invent people named Brenda, Tom, etc.
            - Mention specific people from the Context if relevant (e.g. "Good for [Member Name], but bad for [Member Name]").
            - NOT generic (e.g. "Good option"). Be specific!
+           - CRITICAL: DO NOT quote "total travel time" or "aggregate minutes" (e.g. "345 mins total"). This confuses users. Focus on fairness, average time, or specific individual benefits.
 
         OUTPUT JSON:
         {

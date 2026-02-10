@@ -17,9 +17,10 @@ interface PubVotingViewProps {
     onConfirmWinner: (pubId: string) => void // HOST only
     isHost: boolean
     readOnly?: boolean
+    onBack?: () => void
 }
 
-export function PubVotingView({ pubs, round, currentUserId, members = [], onVote, onConfirmWinner, isHost, readOnly }: PubVotingViewProps) {
+export function PubVotingView({ pubs, round, currentUserId, members = [], onVote, onConfirmWinner, isHost, readOnly, onBack }: PubVotingViewProps) {
     const [selectedPubId, setSelectedPubId] = useState<string | null>(pubs[0]?.place_id || null)
     const [viewMode, setViewMode] = useState<'carousel' | 'grid'>('carousel')
     const carouselRef = useRef<HTMLDivElement>(null)
@@ -30,7 +31,27 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
 
     // Center map on the selected pub
     const selectedPub = pubs.find(p => p.place_id === selectedPubId) || pubs[0]
-    const mapCenter = selectedPub?.location || { lat: 51.5074, lng: -0.1278 }
+    // const mapCenter = selectedPub?.location || { lat: 51.5074, lng: -0.1278 } // Unused if fitting bounds
+    const mapRef = useRef<google.maps.Map | null>(null); // Add separate ref for Map instance
+
+    // Fit Bounds Effect
+    useEffect(() => {
+        if (!mapRef.current || pubs.length === 0) return;
+
+        const bounds = new google.maps.LatLngBounds();
+        pubs.forEach(pub => {
+            if (pub.location) {
+                bounds.extend(pub.location);
+            }
+        });
+
+        // Add some padding by extending bounds slightly or relying on map padding?
+        // Let's just fitBounds.
+        mapRef.current.fitBounds(bounds);
+
+        // Optional: pan to selected if bounds are huge? No, "Show all candidates initially" was the request.
+        // We can just rely on user interaction after.
+    }, [pubs, mapRef]);
 
     // Vote Counts
     const votes: Record<string, PartyMember[]> = {}
@@ -92,13 +113,13 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
             <div className="w-full h-1/2 min-h-[40vh] rounded-xl overflow-hidden border border-white/10 shrink-0 relative shadow-2xl">
                 <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''}>
                     <Map
-                        defaultCenter={mapCenter}
-                        center={mapCenter}
-                        defaultZoom={15}
+                        defaultZoom={12} // Adjusted default
                         mapId="pub-voting-map"
                         disableDefaultUI={true}
                         className="w-full h-full"
                         gestureHandling={'greedy'}
+                        // @ts-ignore - ref type mismatch with library sometimes
+                        ref={mapRef}
                     >
                         {pubs.map((pub, idx) => (
                             <AdvancedMarker
@@ -294,6 +315,15 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
                     <p className="text-center text-white/20 text-xs italic py-4">No votes yet...</p>
                 )}
             </div>
+
+            {/* Host Undo Button */}
+            {isHost && onBack && (
+                <div className="w-full flex justify-center pb-4">
+                    <Button variant="ghost" onClick={onBack} className="text-white/30 hover:text-white text-xs">
+                        ← Undo: Back to Area Selection
+                    </Button>
+                </div>
+            )}
         </div>
     )
 }

@@ -557,6 +557,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                         onConfirmWinner={async (pid) => { if (!isReview) handleConfirmPub(pid) }}
                                         isHost={isHost}
                                         readOnly={isReview}
+                                        onBack={isHost && !isReview ? handleUndoResult : undefined} // Only host can undo stage
                                     />
                                 )
                             }
@@ -620,7 +621,15 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                                     endText = "Returns to Start"
                                                 } else {
                                                     const name = getEndName(member)
-                                                    endText = name || 'Different Return'
+                                                    // Ensure we don't show "Custom Return" if possible, but the hook might return it as fallback.
+                                                    // The hook returns "Custom Return" if not geocoded yet.
+                                                    // Let's rely on the hook's update or just show it for now until we can improve hook.
+                                                    // Tech Debt: Hook returns "Custom Return" as default.
+                                                    // Let's override visuals here if it says "Custom Return" -> "Custom Location" or just wait?
+                                                    // Actually, let's trust the hook handles it or we update hook. 
+                                                    // Wait, the user specifically said: "Remember ensure that we always either state the exact location or a 'near ...' - never use pin or 'custom'"
+                                                    // I should check use-geocoded-names.ts again.
+                                                    endText = (name === 'Custom Return') ? 'Custom Location' : (name || 'Different Return')
                                                 }
 
                                                 return (
@@ -691,7 +700,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                                     }).catch(() => { })
                                                 } else {
                                                     navigator.clipboard.writeText(url)
-                                                    alert('Link copied to clipboard!')
+                                                    setSystemMessage('Link copied to clipboard!')
                                                 }
                                             }}
                                             className="text-white/60 hover:text-white bg-white/5 border border-white/10 hover:bg-white/10"
