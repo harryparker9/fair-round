@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { PubRecommendation, Round, PartyMember } from '@/types'
 import { MapPin, Star, ThumbsUp } from 'lucide-react'
-import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps'
+import { APIProvider, Map, AdvancedMarker, Pin, useMap } from '@vis.gl/react-google-maps'
 import { cn } from '@/lib/utils'
 
 interface PubVotingViewProps {
@@ -21,6 +21,33 @@ interface PubVotingViewProps {
 }
 
 export function PubVotingView({ pubs, round, currentUserId, members = [], onVote, onConfirmWinner, isHost, readOnly, onBack }: PubVotingViewProps) {
+    // Map Updater Sub-component
+    function MapUpdater({ pubs }: { pubs: PubRecommendation[] }) {
+        const map = useMap()
+
+        useEffect(() => {
+            if (!map || pubs.length === 0) return
+
+            const bounds = new google.maps.LatLngBounds()
+            let validPoints = 0
+
+            pubs.forEach(pub => {
+                if (pub.location && typeof pub.location.lat === 'number' && typeof pub.location.lng === 'number') {
+                    if (pub.location.lat !== 0 || pub.location.lng !== 0) {
+                        bounds.extend(pub.location)
+                        validPoints++
+                    }
+                }
+            })
+
+            if (validPoints > 0) {
+                map.fitBounds(bounds)
+            }
+        }, [map, pubs])
+
+        return null
+    }
+
     const [selectedPubId, setSelectedPubId] = useState<string | null>(pubs[0]?.place_id || null)
     const [viewMode, setViewMode] = useState<'carousel' | 'grid'>('carousel')
     const carouselRef = useRef<HTMLDivElement>(null)
@@ -31,29 +58,6 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
 
     // Center map on the selected pub
     const selectedPub = pubs.find(p => p.place_id === selectedPubId) || pubs[0]
-    // const mapCenter = selectedPub?.location || { lat: 51.5074, lng: -0.1278 } // Unused if fitting bounds
-    const mapRef = useRef<google.maps.Map | null>(null); // Add separate ref for Map instance
-
-    // Fit Bounds Effect
-    useEffect(() => {
-        if (!mapRef.current || pubs.length === 0) return;
-
-        const bounds = new google.maps.LatLngBounds();
-        let validPoints = 0;
-
-        pubs.forEach(pub => {
-            if (pub.location && typeof pub.location.lat === 'number' && typeof pub.location.lng === 'number') {
-                if (pub.location.lat !== 0 || pub.location.lng !== 0) {
-                    bounds.extend(pub.location);
-                    validPoints++;
-                }
-            }
-        });
-
-        if (validPoints > 0) {
-            mapRef.current.fitBounds(bounds);
-        }
-    }, [pubs, mapRef]);
 
     // Vote Counts
     const votes: Record<string, PartyMember[]> = {}
@@ -115,14 +119,14 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
             <div className="w-full h-1/2 min-h-[40vh] rounded-xl overflow-hidden border border-white/10 shrink-0 relative shadow-2xl">
                 <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''}>
                     <Map
-                        defaultZoom={12} // Adjusted default
+                        defaultZoom={12}
+                        defaultCenter={{ lat: 51.5074, lng: -0.1278 }}
                         mapId="pub-voting-map"
                         disableDefaultUI={true}
                         className="w-full h-full"
                         gestureHandling={'greedy'}
-                        // @ts-ignore - ref type mismatch with library sometimes
-                        ref={mapRef}
                     >
+                        <MapUpdater pubs={pubs} />
                         {pubs.map((pub, idx) => (
                             <AdvancedMarker
                                 key={pub.place_id}

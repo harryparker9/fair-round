@@ -24,19 +24,23 @@ export function useGeocodedNames(members: PartyMember[]) {
                 try {
                     // 1. Start Location
                     if ((m.start_location_type === 'custom' || m.start_location_type === 'live') && m.location) {
-                        const response = await geocoder.geocode({ location: { lat: m.location.lat, lng: m.location.lng } })
-                        if (response.results[0]) {
-                            const locality = getLocality(response.results[0])
-                            newNames[`${m.id}_start`] = `Near ${locality}`
+                        if (m.location.lat !== 0 || m.location.lng !== 0) {
+                            const response = await geocoder.geocode({ location: { lat: m.location.lat, lng: m.location.lng } })
+                            if (response.results[0]) {
+                                const locality = getLocality(response.results[0])
+                                newNames[`${m.id}_start`] = `Near ${locality}`
+                            }
                         }
                     }
 
                     // 2. End Location
                     if (m.end_location_type === 'custom' && m.end_lat && m.end_lng) {
-                        const response = await geocoder.geocode({ location: { lat: m.end_lat, lng: m.end_lng } })
-                        if (response.results[0]) {
-                            const locality = getLocality(response.results[0])
-                            newNames[`${m.id}_end`] = `Near ${locality}`
+                        if (m.end_lat !== 0 || m.end_lng !== 0) {
+                            const response = await geocoder.geocode({ location: { lat: m.end_lat, lng: m.end_lng } })
+                            if (response.results[0]) {
+                                const locality = getLocality(response.results[0])
+                                newNames[`${m.id}_end`] = `Near ${locality}`
+                            }
                         }
                     }
 

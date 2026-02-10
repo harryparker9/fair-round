@@ -400,7 +400,7 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                         >
                             <Users className="w-4 h-4 text-pint-gold group-hover:drop-shadow-[0_0_8px_rgba(255,215,0,0.5)] transition-all" />
                             <span className="text-sm font-bold text-white">{uniqueMembers.length}</span>
-                            <span className="text-[10px] text-white/40 uppercase tracking-wider ml-1 group-hover:text-white/60">Map</span>
+                            <span className="text-[10px] text-white/40 uppercase tracking-wider ml-1 group-hover:text-white/60 hidden sm:inline">Map</span>
                         </button>
                     </div>
 

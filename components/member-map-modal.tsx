@@ -50,11 +50,20 @@ export function MemberMapModal({ members, isOpen, onClose, stationData, mode, fo
     const getCoords = (member: PartyMember, type: 'start' | 'end'): { lat: number, lng: number } | null => {
         if (type === 'start') {
             if (member.start_location_type === 'station' && member.start_station_id) return stationData[member.start_station_id] || null
-            if ((member.start_location_type === 'live' || member.start_location_type === 'custom') && member.location) return member.location
+            if ((member.start_location_type === 'live' || member.start_location_type === 'custom') && member.location) {
+                if (member.location.lat === 0 && member.location.lng === 0) return null
+                return member.location
+            }
         } else {
             if (member.end_location_type === 'station' && member.end_station_id) return stationData[member.end_station_id] || null
-            if (member.end_location_type === 'custom' && member.end_lat && member.end_lng) return { lat: member.end_lat, lng: member.end_lng }
-            if (member.end_location_type === 'same' && member.location) return member.location // Default to start
+            if (member.end_location_type === 'custom' && member.end_lat && member.end_lng) {
+                if (member.end_lat === 0 && member.end_lng === 0) return null
+                return { lat: member.end_lat, lng: member.end_lng }
+            }
+            if (member.end_location_type === 'same' && member.location) {
+                if (member.location.lat === 0 && member.location.lng === 0) return null
+                return member.location // Default to start
+            }
         }
         return null
     }

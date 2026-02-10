@@ -8,13 +8,15 @@ import { triangulateRound } from "./triangulate"
 // 1. Host starts the voting logic
 export async function startAreaVoting(roundId: string) {
     try {
+        console.log(` Starting Area Voting for Round: ${roundId}`);
+
         // Fetch members
         const { data: members } = await supabase
             .from('party_members')
             .select('*')
             .eq('round_id', roundId)
 
-        if (!members || members.length === 0) throw new Error("No members found")
+        if (!members || members.length === 0) throw new Error("No party members found. Invite some friends first!")
 
         // Fetch round settings (for Meeting Time)
         const { data: round } = await supabase.from('rounds').select('settings').eq('id', roundId).single()
@@ -29,6 +31,10 @@ export async function startAreaVoting(roundId: string) {
         // Generate Options (Gemini + Distance Matrix)
         const { strategy, recommendations } = await triangulationService.findBestStations(members, meetingTime)
 
+        if (!recommendations || recommendations.length === 0) {
+            throw new Error("Could not find any suitable areas. Try adjusting locations.")
+        }
+
         const { error } = await db
             .from('rounds')
             .update({
@@ -41,8 +47,14 @@ export async function startAreaVoting(roundId: string) {
         if (error) throw error
         return { success: true, options: recommendations }
     } catch (e: any) {
-        console.error("Area Voting Error:", e)
-        return { success: false, error: e.message || "Unknown error" }
+        console.error("Area Voting Critical Error:", e)
+        // Attempt to clear loading state if failed
+        try {
+            await supabaseAdmin.from('rounds').update({ settings: { is_calculating: false } }).eq('id', roundId)
+        } catch (cleanupErr) {
+            console.error("Failed to cleanup loading state", cleanupErr)
+        }
+        return { success: false, error: e.message || "Failed to calculate options. Please try again." }
     }
 }
 
