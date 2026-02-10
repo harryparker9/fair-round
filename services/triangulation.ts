@@ -236,28 +236,39 @@ export const triangulationService = {
 
         // C. SCOUT (Gemini)
         let candidates: any[] = [];
-        try {
-            console.log("Scouting stations...");
-            const suggestions = await gemini.scoutStations(context, meetingTime || "Now");
-            console.log("AI Suggestions:", suggestions);
 
-            if (suggestions.length > 0) {
-                // Fetch ALL stations to do robust matching
-                const { data: allStations } = await supabase.from('stations').select('*');
+        // Retry Loop for AI Reliability
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+                console.log(`Scouting stations (Attempt ${attempt}/3)...`);
+                const suggestions = await gemini.scoutStations(context, meetingTime || "Now");
 
-                if (allStations) {
-                    candidates = suggestions.map(sName => {
-                        // Fuzzy match name
-                        const normalize = (s: string) => s.toLowerCase().replace(' station', '').trim();
-                        const target = normalize(sName);
-                        // Find match
-                        const match = allStations.find(dbS => normalize(dbS.name).includes(target) || target.includes(normalize(dbS.name)));
-                        return match;
-                    }).filter(Boolean); // Remove nulls
+                if (suggestions.length > 0) {
+                    console.log("AI Suggestions:", suggestions);
+                    // Fetch ALL stations to do robust matching
+                    const { data: allStations } = await supabase.from('stations').select('*');
+
+                    if (allStations) {
+                        candidates = suggestions.map(sName => {
+                            // Fuzzy match name
+                            const normalize = (s: string) => s.toLowerCase().replace(' station', '').trim();
+                            const target = normalize(sName);
+                            // Find match
+                            const match = allStations.find(dbS => normalize(dbS.name).includes(target) || target.includes(normalize(dbS.name)));
+                            return match;
+                        }).filter(Boolean); // Remove nulls
+                    }
+
+                    if (candidates.length >= 3) break; // Success!
+                } else {
+                    console.warn(`Attempt ${attempt} yielded no suggestions.`);
                 }
+            } catch (e) {
+                console.error(`AI Scout Attempt ${attempt} Failed:`, e);
             }
-        } catch (e) {
-            console.error("AI Scout Failed:", e);
+
+            // Backoff if not last attempt
+            if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 1500));
         }
 
         // FALLBACK: If AI returned nothing valid (or failed), use Math Shortlist

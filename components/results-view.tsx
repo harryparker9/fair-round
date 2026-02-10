@@ -144,33 +144,7 @@ export function ResultsView({ recommendations, members = [], onBack, isHost }: R
                             </div>
 
                             <div className="space-y-2 pt-2 border-t border-white/5">
-                                {/* HEADER REMOVED */}
-                                <div className="grid grid-cols-2 gap-2">
-                                    {Object.entries(pub.travel_times).map(([name, time]) => (
-                                        <div key={name} className="flex justify-between items-center bg-white/5 px-2 py-1 rounded">
-                                            <span className="text-xs text-white/80">{name}</span>
-                                            <div className="flex items-center gap-2">
-                                                <div className="flex flex-col items-end leading-none">
-                                                    <span className={time.to > 45 ? "text-red-400" : "text-fairness-green"}>
-                                                        Go: {time.to}m
-                                                    </span>
-                                                    <span className="text-[10px] text-white/40">
-                                                        Ret: {time.home}m
-                                                    </span>
-                                                </div>
-                                                <a
-                                                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(pub.name + ' ' + pub.vicinity)}&travelmode=transit`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="flex items-center gap-1 hover:text-pint-gold transition-colors"
-                                                    title="View Route"
-                                                >
-                                                    <span className="text-[9px] opacity-50">↗</span>
-                                                </a>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                                {/* Grid Removed based on user feedback */}
                             </div>
 
                             <div className="flex justify-end text-xs text-pint-gold/80 pt-1">

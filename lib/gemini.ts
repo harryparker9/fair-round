@@ -21,7 +21,7 @@ export const gemini = {
     `;
 
         try {
-            const result = await model.generateContent(prompt);
+            const result = await model.generateContent(prompt, { timeout: 15000 });
             const response = await result.response;
             return response.text().trim();
         } catch (error: any) {
@@ -51,7 +51,7 @@ export const gemini = {
         `;
 
         try {
-            const result = await model.generateContent(prompt);
+            const result = await model.generateContent(prompt, { timeout: 15000 });
             const response = await result.response;
             const text = response.text();
 
@@ -95,7 +95,7 @@ export const gemini = {
         `;
 
         try {
-            const result = await model.generateContent(prompt);
+            const result = await model.generateContent(prompt, { timeout: 15000 });
             return result.response.text().trim();
         } catch (error) {
             console.error("Gemini Strategy Error:", error);
@@ -127,7 +127,7 @@ export const gemini = {
         `;
 
         try {
-            const result = await model.generateContent(prompt);
+            const result = await model.generateContent(prompt, { timeout: 15000 });
             const text = result.response.text();
             const jsonMatch = text.match(/\[[\s\S]*\]/);
             if (!jsonMatch) return [];
@@ -179,7 +179,7 @@ export const gemini = {
         `;
 
         try {
-            const result = await model.generateContent(prompt);
+            const result = await model.generateContent(prompt, { timeout: 15000 });
             const text = result.response.text();
             const jsonMatch = text.match(/\{[\s\S]*\}/);
             if (!jsonMatch) return null;
