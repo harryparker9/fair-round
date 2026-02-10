@@ -291,6 +291,15 @@ export function AreaVotingView({ roundId, options, members, currentUserMemberId,
             <div className="text-center text-[10px] text-white/20 pb-4">
                 You are: {members.find(m => m.id === currentUserMemberId)?.name || "Unknown"} ({currentUserMemberId})
             </div>
+
+            {/* Waiting Message for Guest */}
+            {members.find(m => m.id === currentUserMemberId)?.vote_area_id && !isHost && (
+                <div className="fixed bottom-0 left-0 right-0 p-4 bg-charcoal/95 backdrop-blur border-t border-white/10 flex justify-center z-50 animate-slide-up">
+                    <p className="text-pint-gold text-sm font-bold animate-pulse">
+                        Waiting for host to confirm...
+                    </p>
+                </div>
+            )}
         </div>
     )
 }

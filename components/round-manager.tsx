@@ -18,6 +18,7 @@ import { MemberMapModal } from '@/components/member-map-modal'
 import { PubVotingView } from '@/components/pub-voting-view'
 import { useArnieHelp } from '@/components/arnie-help-context'
 import { useGeocodedNames } from '@/hooks/use-geocoded-names'
+import { APIProvider } from '@vis.gl/react-google-maps'
 
 interface RoundManagerProps {
     roundId: string
@@ -202,7 +203,25 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
             })
 
         return () => { supabase.removeChannel(channel) }
+        return () => { supabase.removeChannel(channel) }
     }, [roundId, recommendations])
+
+    // Global Undo Notification
+    const prevStageRef = useRef<string>(stage)
+    useEffect(() => {
+        const stages = ['lobby', 'voting', 'pub_voting', 'results']
+        const prevIdx = stages.indexOf(prevStageRef.current)
+        const currIdx = stages.indexOf(stage)
+
+        if (currIdx < prevIdx && prevIdx !== -1) {
+            // Regressed!
+            setSystemMessage("Hold up! The host has requested a re-vote.")
+            // Optional: Arnie Sound or special pop-up? 
+            // The system message toast (lines 494-498) will show this.
+        }
+
+        prevStageRef.current = stage
+    }, [stage])
 
     // 4. Force Exit if round ended
     useEffect(() => {
@@ -360,409 +379,408 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
     const componentStatus = roundStatus;
 
     return (
-        <div className="w-full flex flex-col items-center">
-            {/* Persistent Header */}
-            <div className="fixed top-0 left-0 right-0 bg-charcoal/90 backdrop-blur-md p-3 z-50 border-b border-white/10 flex justify-between items-center px-4 shadow-lg h-16">
-                {/* Left: Code */}
-                <div className="flex flex-col">
-                    <span className="text-[10px] text-white/50 uppercase tracking-wider">Round Code</span>
-                    <span className="text-pint-gold font-mono text-xl font-bold leading-none">{code}</span>
-                </div>
-
-                {/* Center: Map Toggle (Context Aware) */}
-                <div className="absolute left-1/2 transform -translate-x-1/2 flex flex-col items-center">
-                    <button
-                        onClick={() => setMapState({
-                            isOpen: true,
-                            mode: stage === 'voting' ? 'voting' : stage === 'lobby' ? 'lobby' : 'results'
-                        })}
-                        className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full hover:bg-white/10 hover:border-pint-gold/50 transition-all active:scale-95 group"
-                    >
-                        <Users className="w-4 h-4 text-pint-gold group-hover:drop-shadow-[0_0_8px_rgba(255,215,0,0.5)] transition-all" />
-                        <span className="text-sm font-bold text-white">{uniqueMembers.length}</span>
-                        <span className="text-[10px] text-white/40 uppercase tracking-wider ml-1 group-hover:text-white/60">Map</span>
-                    </button>
-                </div>
-
-                {/* Right: Host Controls & Exit */}
-                {/* Right: Host Controls & Exit */}
-                <div className="flex items-center gap-2">
-                    {/* Pin / Settings Button (Destructive Reset) */}
-                    {joined && (
-                        <div className="relative">
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setIsResetDialogOpen(true)}
-                                className="text-white/60 hover:text-pint-gold p-2 transition-colors active:scale-95"
-                            >
-                                <MapPin className="w-5 h-5" />
-                                <span className="sr-only">Location Settings</span>
-                            </Button>
-
-                            <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
-                                <DialogContent className="bg-charcoal border-white/10 text-white max-w-sm">
-                                    <DialogHeader>
-                                        <DialogTitle>Change Location?</DialogTitle>
-                                        <DialogDescription className="text-white/60">
-                                            Warning: Changing your location will <span className="text-red-400 font-bold">RESET</span> the round to the Lobby for everyone.
-                                            <br /><br />
-                                            Are you sure you want to proceed?
-                                        </DialogDescription>
-                                    </DialogHeader>
-                                    <DialogFooter>
-                                        <Button variant="ghost" className="text-white/40 hover:text-white" onClick={() => setIsResetDialogOpen(false)}>Cancel</Button>
-                                        <Button
-                                            variant="destructive"
-                                            className="bg-red-500/20 text-red-400 hover:bg-red-500/40 border border-red-500/50"
-                                            onClick={() => {
-                                                setIsEditingSettings(true)
-                                                setIsResetDialogOpen(false)
-                                            }}
-                                        >
-                                            Yes, Reset Round
-                                        </Button>
-                                    </DialogFooter>
-                                </DialogContent>
-                            </Dialog>
-                        </div>
-                    )}
-
-
-
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleExit}
-                        className="text-white/60 hover:text-red-400 hover:bg-red-900/20 p-2"
-                    >
-                        <LogOut className="w-5 h-5" />
-                        <span className="sr-only">Exit</span>
-                    </Button>
-                </div>
-            </div>
-
-            {/* Stage Runner (Sub-header) */}
-            <div className="fixed top-16 left-0 right-0 h-12 bg-charcoal/80 backdrop-blur-md border-b border-white/5 z-40 flex justify-center items-center gap-2">
-                {[
-                    { id: 'lobby', label: 'Lobby' },
-                    { id: 'voting', label: 'Area' },
-                    { id: 'pub_voting', label: 'Pubs' },
-                    { id: 'results', label: 'Result' }
-                ].map((s, idx) => {
-                    const stages = ['lobby', 'voting', 'pub_voting', 'results']
-                    const currentIdx = stages.indexOf(stage)
-                    const thisIdx = stages.indexOf(s.id)
-                    const isPast = thisIdx <= currentIdx
-
-                    // Active = The one we are VIEWING
-                    const isActive = viewingStage ? viewingStage === s.id : stage === s.id
-
-                    return (
-                        <button
-                            key={s.id}
-                            disabled={!isPast}
-                            onClick={() => isPast && setViewingStage(s.id as any)}
-                            className={cn(
-                                "px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all",
-                                isActive
-                                    ? "bg-white text-charcoal shadow-[0_0_10px_rgba(255,255,255,0.2)]"
-                                    : isPast
-                                        ? "text-white/40 hover:text-white"
-                                        : "text-white/10 cursor-not-allowed"
-                            )}
-                        >
-                            {s.label}
-                        </button>
-                    )
-                })}
-            </div>
-
-            {/* Member Map Modal (Context Aware) */}
-            <MemberMapModal
-                isOpen={mapState.isOpen}
-                onClose={() => setMapState(prev => ({ ...prev, isOpen: false }))}
-                members={uniqueMembers}
-                stationData={stationData}
-                mode={mapState.mode}
-                focusedMemberId={mapState.focusedMemberId}
-                candidateStations={areaOptions} // Pass available options
-                winningStation={winningPubId ? undefined : undefined} // TODO: Derive winning station if needed, or rely on Pubs
-            />
-
-            {/* System Message Toast */}
-            {systemMessage && (
-                <div className="fixed top-32 left-1/2 transform -translate-x-1/2 z-[60] bg-pint-gold text-charcoal px-4 py-2 rounded-full shadow-lg font-bold text-sm animate-in fade-in slide-in-from-top-4">
-                    📢 {systemMessage}
-                </div>
-            )}
-
-            <div className="mt-32 w-full max-w-md p-4 space-y-8 animate-fade-in-up flex flex-col items-center pb-20">
-
-                {/* 0. EDIT SETTINGS VIEW */}
-                {isEditingSettings ? (
-                    <div className="w-full flex flex-col items-center">
-                        <JoinRoundForm
-                            roundId={roundId}
-                            onJoin={() => { setIsEditingSettings(false); refreshMembers(); }}
-                            initialData={members.find(m => m.id === myMemberId)}
-                            isUpdate={true}
-                        />
-                        <Button variant="ghost" className="text-white/40 mt-4" onClick={() => setIsEditingSettings(false)}>Cancel</Button>
+        <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''}>
+            <div className="w-full flex flex-col items-center">
+                {/* Persistent Header */}
+                <div className="fixed top-0 left-0 right-0 bg-charcoal/90 backdrop-blur-md p-3 z-50 border-b border-white/10 flex justify-between items-center px-4 shadow-lg h-16">
+                    {/* Left: Code */}
+                    <div className="flex flex-col">
+                        <span className="text-[10px] text-white/50 uppercase tracking-wider">Round Code</span>
+                        <span className="text-pint-gold font-mono text-xl font-bold leading-none">{code}</span>
                     </div>
-                ) : (
-                    <>
-                        {/* RENDER BASED ON VIEWING STAGE (Review Mode) OR CURRENT STAGE */}
-                        {(() => {
-                            const effectiveStage = viewingStage || stage
-                            const isReview = !!viewingStage && viewingStage !== stage
 
-                            if (effectiveStage === 'results') {
-                                return recommendations ? (
-                                    <ResultsView
-                                        recommendations={winningPubId
-                                            ? recommendations.filter(r => r.place_id === winningPubId)
-                                            : recommendations}
-                                        members={uniqueMembers}
-                                        onBack={handleUndoResult}
-                                        isHost={isHost}
-                                    />
-                                ) : <p className="text-white">Loading Results...</p>
-                            }
+                    {/* Center: Map Toggle (Context Aware) */}
+                    <div className="absolute left-1/2 transform -translate-x-1/2 flex flex-col items-center">
+                        <button
+                            onClick={() => setMapState({
+                                isOpen: true,
+                                mode: stage === 'voting' ? 'voting' : stage === 'lobby' ? 'lobby' : 'results'
+                            })}
+                            className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full hover:bg-white/10 hover:border-pint-gold/50 transition-all active:scale-95 group"
+                        >
+                            <Users className="w-4 h-4 text-pint-gold group-hover:drop-shadow-[0_0_8px_rgba(255,215,0,0.5)] transition-all" />
+                            <span className="text-sm font-bold text-white">{uniqueMembers.length}</span>
+                            <span className="text-[10px] text-white/40 uppercase tracking-wider ml-1 group-hover:text-white/60">Map</span>
+                        </button>
+                    </div>
 
-                            if (!joined) {
-                                return (
-                                    <JoinRoundForm
-                                        roundId={roundId}
-                                        onJoin={() => window.location.reload()}
-                                        existingMembers={uniqueMembers}
-                                    />
-                                )
-                            }
+                    {/* Right: Host Controls & Exit */}
+                    {/* Right: Host Controls & Exit */}
+                    <div className="flex items-center gap-2">
+                        {/* Pin / Settings Button (Destructive Reset) */}
+                        {joined && (
+                            <div className="relative">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setIsResetDialogOpen(true)}
+                                    className="text-white/60 hover:text-pint-gold p-2 transition-colors active:scale-95"
+                                >
+                                    <MapPin className="w-5 h-5" />
+                                    <span className="sr-only">Location Settings</span>
+                                </Button>
 
-                            if (effectiveStage === 'pub_voting' && recommendations) {
-                                return (
-                                    <PubVotingView
-                                        pubs={recommendations}
-                                        // @ts-ignore
-                                        round={{ id: roundId }}
-                                        currentUserId={myUserId || ''}
-                                        members={uniqueMembers}
-                                        onVote={async (pubId) => {
-                                            if (!isReview && myMemberId) {
-                                                // @ts-ignore
-                                                await import('@/actions/voting').then(mod => mod.castPubVote(myMemberId, pubId))
-                                            }
-                                        }}
-                                        onConfirmWinner={async (pid) => { if (!isReview) handleConfirmPub(pid) }}
-                                        isHost={isHost}
-                                        readOnly={isReview}
-                                        onBack={isHost && !isReview ? handleUndoResult : undefined} // Only host can undo stage
-                                    />
-                                )
-                            }
+                                <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+                                    <DialogContent className="bg-charcoal border-white/10 text-white max-w-sm">
+                                        <DialogHeader>
+                                            <DialogTitle>Change Location?</DialogTitle>
+                                            <DialogDescription className="text-white/60">
+                                                Warning: Changing your location will <span className="text-red-400 font-bold">RESET</span> the round to the Lobby for everyone.
+                                                <br /><br />
+                                                Are you sure you want to proceed?
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <DialogFooter>
+                                            <Button variant="ghost" className="text-white/40 hover:text-white" onClick={() => setIsResetDialogOpen(false)}>Cancel</Button>
+                                            <Button
+                                                variant="destructive"
+                                                className="bg-red-500/20 text-red-400 hover:bg-red-500/40 border border-red-500/50"
+                                                onClick={() => {
+                                                    setIsEditingSettings(true)
+                                                    setIsResetDialogOpen(false)
+                                                }}
+                                            >
+                                                Yes, Reset Round
+                                            </Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
+                            </div>
+                        )}
 
-                            if (effectiveStage === 'voting') {
-                                return (
-                                    <div className="relative w-full">
-                                        <AreaVotingView
-                                            roundId={roundId}
-                                            options={areaOptions}
+
+
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleExit}
+                            className="text-white/60 hover:text-red-400 hover:bg-red-900/20 p-2"
+                        >
+                            <LogOut className="w-5 h-5" />
+                            <span className="sr-only">Exit</span>
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Stage Runner (Sub-header) */}
+                <div className="fixed top-16 left-0 right-0 h-12 bg-charcoal/80 backdrop-blur-md border-b border-white/5 z-40 flex justify-center items-center gap-2">
+                    {[
+                        { id: 'lobby', label: 'Lobby' },
+                        { id: 'voting', label: 'Area' },
+                        { id: 'pub_voting', label: 'Pubs' },
+                        { id: 'results', label: 'Result' }
+                    ].map((s, idx) => {
+                        const stages = ['lobby', 'voting', 'pub_voting', 'results']
+                        const currentIdx = stages.indexOf(stage)
+                        const thisIdx = stages.indexOf(s.id)
+                        const isPast = thisIdx <= currentIdx
+
+                        // Active = The one we are VIEWING
+                        const isActive = viewingStage ? viewingStage === s.id : stage === s.id
+
+                        return (
+                            <button
+                                key={s.id}
+                                disabled={!isPast}
+                                onClick={() => isPast && setViewingStage(s.id as any)}
+                                className={cn(
+                                    "px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all",
+                                    isActive
+                                        ? "bg-white text-charcoal shadow-[0_0_10px_rgba(255,255,255,0.2)]"
+                                        : isPast
+                                            ? "text-white/40 hover:text-white"
+                                            : "text-white/10 cursor-not-allowed"
+                                )}
+                            >
+                                {s.label}
+                            </button>
+                        )
+                    })}
+                </div>
+
+                {/* Member Map Modal (Context Aware) */}
+                <MemberMapModal
+                    isOpen={mapState.isOpen}
+                    onClose={() => setMapState(prev => ({ ...prev, isOpen: false }))}
+                    members={uniqueMembers}
+                    stationData={stationData}
+                    mode={mapState.mode}
+                    focusedMemberId={mapState.focusedMemberId}
+                    candidateStations={areaOptions} // Pass available options
+                    winningStation={winningPubId ? undefined : undefined} // TODO: Derive winning station if needed, or rely on Pubs
+                />
+
+                {/* System Message Toast */}
+                {systemMessage && (
+                    <div className="fixed top-32 left-1/2 transform -translate-x-1/2 z-[60] bg-pint-gold text-charcoal px-4 py-2 rounded-full shadow-lg font-bold text-sm animate-in fade-in slide-in-from-top-4">
+                        📢 {systemMessage}
+                    </div>
+                )}
+
+                <div className="mt-32 w-full max-w-md p-4 space-y-8 animate-fade-in-up flex flex-col items-center pb-20">
+
+                    {/* 0. EDIT SETTINGS VIEW */}
+                    {isEditingSettings ? (
+                        <div className="w-full flex flex-col items-center">
+                            <JoinRoundForm
+                                roundId={roundId}
+                                onJoin={() => { setIsEditingSettings(false); refreshMembers(); }}
+                                initialData={members.find(m => m.id === myMemberId)}
+                                isUpdate={true}
+                            />
+                            <Button variant="ghost" className="text-white/40 mt-4" onClick={() => setIsEditingSettings(false)}>Cancel</Button>
+                        </div>
+                    ) : (
+                        <>
+                            {/* RENDER BASED ON VIEWING STAGE (Review Mode) OR CURRENT STAGE */}
+                            {(() => {
+                                const effectiveStage = viewingStage || stage
+                                const isReview = !!viewingStage && viewingStage !== stage
+
+                                if (effectiveStage === 'results') {
+                                    return recommendations ? (
+                                        <ResultsView
+                                            recommendations={winningPubId
+                                                ? recommendations.filter(r => r.place_id === winningPubId)
+                                                : recommendations}
                                             members={uniqueMembers}
-                                            currentUserMemberId={myMemberId || undefined}
+                                            onBack={handleUndoResult}
                                             isHost={isHost}
-                                            aiStrategy={aiStrategy || undefined} // Pass AI Strategy
-                                            onVote={async (areaId) => {
-                                                if (myMemberId && !isReview) {
-                                                    await castVote(myMemberId, areaId)
-                                                }
-                                            }}
-                                            onStageChange={async (newStage, winningAreaId) => {
-                                                if (!isHost || isReview) return
-                                                if (newStage === 'pub_voting' && winningAreaId) {
-                                                    setPendingWinningAreaId(winningAreaId)
-                                                    setShowSearchPrefs(true)
-                                                }
-                                            }}
                                         />
-                                        {isReview && <div className="absolute inset-0 bg-transparent z-10 pointer-events-none" />}
-                                    </div>
-                                )
-                            }
+                                    ) : <p className="text-white">Loading Results...</p>
+                                }
 
-                            // Lobby
-                            return (
-                                <div className="w-full text-center space-y-8">
-                                    <div>
-                                        <h1 className="text-3xl font-bold text-white">Lobby</h1>
-                                        <p className="text-white/60">Waiting for everyone...</p>
-                                    </div>
+                                if (!joined) {
+                                    return (
+                                        <JoinRoundForm
+                                            roundId={roundId}
+                                            onJoin={() => window.location.reload()}
+                                            existingMembers={uniqueMembers}
+                                        />
+                                    )
+                                }
 
-                                    <div className="glass-panel p-6 rounded-2xl flex flex-col items-center gap-6 w-full">
-                                        <div className="flex flex-col gap-3 w-full">
-                                            {uniqueMembers.map((member) => {
-                                                // Resolve Start Text (Lobby Version)
-                                                let startText = 'Location Pending'
-                                                if (member.start_location_type === 'station' && member.start_station_id) {
-                                                    startText = stationData[member.start_station_id]?.name || 'Station'
-                                                } else {
-                                                    const name = getStartName(member)
-                                                    startText = (name === 'Pinned Location') ? 'Near Location' : (name || 'Near Location')
-
-                                                    // Keep it short
-                                                    if (startText.length > 25) startText = startText.split(',')[0] + '...'
+                                if (effectiveStage === 'pub_voting' && recommendations) {
+                                    return (
+                                        <PubVotingView
+                                            pubs={recommendations}
+                                            // @ts-ignore
+                                            round={{ id: roundId }}
+                                            currentUserId={myUserId || ''}
+                                            members={uniqueMembers}
+                                            onVote={async (pubId) => {
+                                                if (!isReview && myMemberId) {
+                                                    // @ts-ignore
+                                                    await import('@/actions/voting').then(mod => mod.castPubVote(myMemberId, pubId))
                                                 }
+                                            }}
+                                            onConfirmWinner={async (pid) => { if (!isReview) handleConfirmPub(pid) }}
+                                            isHost={isHost}
+                                            readOnly={isReview}
+                                            onBack={isHost && !isReview ? handleUndoResult : undefined} // Only host can undo stage
+                                        />
+                                    )
+                                }
 
-                                                // Resolve End (if different)
-                                                let endText = null
-                                                if (member.end_location_type === 'station' && member.end_station_id) {
-                                                    endText = stationData[member.end_station_id]?.name || 'Station'
-                                                } else if (member.end_location_type === 'same') {
-                                                    endText = "Returns to Start"
-                                                } else {
-                                                    const name = getEndName(member)
-                                                    // Ensure we don't show "Custom Return" if possible, but the hook might return it as fallback.
-                                                    // The hook returns "Custom Return" if not geocoded yet.
-                                                    // Let's rely on the hook's update or just show it for now until we can improve hook.
-                                                    // Tech Debt: Hook returns "Custom Return" as default.
-                                                    // Let's override visuals here if it says "Custom Return" -> "Custom Location" or just wait?
-                                                    // Actually, let's trust the hook handles it or we update hook. 
-                                                    // Wait, the user specifically said: "Remember ensure that we always either state the exact location or a 'near ...' - never use pin or 'custom'"
-                                                    // I should check use-geocoded-names.ts again.
-                                                    endText = (name === 'Custom Return') ? 'Custom Location' : (name || 'Different Return')
-                                                }
+                                if (effectiveStage === 'voting') {
+                                    return (
+                                        <div className="relative w-full">
+                                            <AreaVotingView
+                                                roundId={roundId}
+                                                options={areaOptions}
+                                                members={uniqueMembers}
+                                                currentUserMemberId={myMemberId || undefined}
+                                                isHost={isHost}
+                                                aiStrategy={aiStrategy || undefined} // Pass AI Strategy
+                                                onVote={async (areaId) => {
+                                                    if (myMemberId && !isReview) {
+                                                        await castVote(myMemberId, areaId)
+                                                    }
+                                                }}
+                                                onStageChange={async (newStage, winningAreaId) => {
+                                                    if (!isHost || isReview) return
+                                                    if (newStage === 'pub_voting' && winningAreaId) {
+                                                        setPendingWinningAreaId(winningAreaId)
+                                                        setShowSearchPrefs(true)
+                                                    }
+                                                }}
+                                            />
+                                            {isReview && <div className="absolute inset-0 bg-transparent z-10 pointer-events-none" />}
+                                        </div>
+                                    )
+                                }
 
-                                                return (
-                                                    <div
-                                                        key={member.id}
-                                                        onClick={() => setMapState({ isOpen: true, mode: 'single', focusedMemberId: member.id })}
-                                                        className="flex items-center gap-4 bg-white/5 hover:bg-white/10 p-3 rounded-xl border border-white/5 hover:border-pint-gold/50 animate-pop-in cursor-pointer transition-all active:scale-95 group relative pr-10"
-                                                    >
-                                                        {isHost && member.id !== myMemberId && (
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); handleKick(member.id); }}
-                                                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-white/20 hover:text-red-400 hover:bg-red-500/10 rounded-full transition-all"
-                                                                title="Kick Member"
-                                                            >
-                                                                <Trash2 className="w-4 h-4" />
-                                                            </button>
-                                                        )}
-                                                        <div className="w-12 h-12 rounded-full overflow-hidden border border-white/20 relative bg-black/40 flex-shrink-0">
-                                                            {member.photo_path ? (
-                                                                /* eslint-disable-next-line @next/next/no-img-element */
-                                                                <img
-                                                                    src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/temporary_selfies/${member.photo_path}`}
-                                                                    alt={member.name}
-                                                                    className="w-full h-full object-cover transform scale-x-[-1]"
-                                                                />
-                                                            ) : (
-                                                                <div className="w-full h-full flex items-center justify-center text-white/50 font-bold">
-                                                                    {member.name[0]?.toUpperCase()}
-                                                                </div>
-                                                            )}
-                                                        </div>
-
-                                                        <div className="flex-1 min-w-0 text-left">
-                                                            <p className="text-white font-bold truncate">{member.name}</p>
-                                                            <div className="flex flex-col text-xs text-white/60">
-                                                                <span className="truncate">From: {startText}</span>
-                                                                {endText && <span className="truncate">To: {endText}</span>}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )
-                                            })}
-                                            {uniqueMembers.length === 0 && <p className="text-white/20 italic">No one yet...</p>}
+                                // Lobby
+                                return (
+                                    <div className="w-full text-center space-y-8">
+                                        <div>
+                                            <h1 className="text-3xl font-bold text-white">Lobby</h1>
+                                            <p className="text-white/60">Waiting for everyone...</p>
                                         </div>
 
-                                        <div className="w-full h-px bg-white/10" />
+                                        <div className="glass-panel p-6 rounded-2xl flex flex-col items-center gap-6 w-full">
+                                            <div className="flex flex-col gap-3 w-full">
+                                                {uniqueMembers.map((member) => {
+                                                    // Resolve Start Text (Lobby Version)
+                                                    let startText = 'Location Pending'
+                                                    if (member.start_location_type === 'station' && member.start_station_id) {
+                                                        startText = stationData[member.start_station_id]?.name || 'Station'
+                                                    } else {
+                                                        const name = getStartName(member)
+                                                        startText = (name === 'Pinned Location') ? 'Near Location' : (name || 'Near Location')
 
-                                        <div className="flex flex-col gap-2">
-                                            <p className="text-white text-lg font-medium">{uniqueMembers.length} {uniqueMembers.length === 1 ? 'Person' : 'People'} Ready</p>
+                                                        // Keep it short
+                                                        if (startText.length > 25) startText = startText.split(',')[0] + '...'
+                                                    }
+
+                                                    // Resolve End (if different)
+                                                    let endText = null
+                                                    if (member.end_location_type === 'station' && member.end_station_id) {
+                                                        endText = stationData[member.end_station_id]?.name || 'Station'
+                                                    } else if (member.end_location_type === 'same') {
+                                                        endText = "Returns to Start"
+                                                    } else {
+                                                        const name = getEndName(member)
+                                                        // FIX: If the hook keeps returning "Custom Location", explicitly check if we have a better name in the hook's internal state?
+                                                        // Actually, let's just use what the hook gives. The hook defaults to "Custom Location".
+                                                        // If we want "Near X", the hook needs to provide it.
+                                                        // If the hook provides "Near X", name will be "Near X".
+                                                        // If name is "Custom Location", we default to that.
+                                                        endText = name || 'Different Return'
+                                                    }
+
+                                                    return (
+                                                        <div
+                                                            key={member.id}
+                                                            onClick={() => setMapState({ isOpen: true, mode: 'single', focusedMemberId: member.id })}
+                                                            className="flex items-center gap-4 bg-white/5 hover:bg-white/10 p-3 rounded-xl border border-white/5 hover:border-pint-gold/50 animate-pop-in cursor-pointer transition-all active:scale-95 group relative pr-10"
+                                                        >
+                                                            {isHost && member.id !== myMemberId && (
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); handleKick(member.id); }}
+                                                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-white/20 hover:text-red-400 hover:bg-red-500/10 rounded-full transition-all"
+                                                                    title="Kick Member"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </button>
+                                                            )}
+                                                            <div className="w-12 h-12 rounded-full overflow-hidden border border-white/20 relative bg-black/40 flex-shrink-0">
+                                                                {member.photo_path ? (
+                                                                    /* eslint-disable-next-line @next/next/no-img-element */
+                                                                    <img
+                                                                        src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/temporary_selfies/${member.photo_path}`}
+                                                                        alt={member.name}
+                                                                        className="w-full h-full object-cover transform scale-x-[-1]"
+                                                                    />
+                                                                ) : (
+                                                                    <div className="w-full h-full flex items-center justify-center text-white/50 font-bold">
+                                                                        {member.name[0]?.toUpperCase()}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            <div className="flex-1 min-w-0 text-left">
+                                                                <p className="text-white font-bold truncate">{member.name}</p>
+                                                                <div className="flex flex-col text-xs text-white/60">
+                                                                    <span className="truncate">From: {startText}</span>
+                                                                    {endText && <span className="truncate">To: {endText}</span>}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })}
+                                                {uniqueMembers.length === 0 && <p className="text-white/20 italic">No one yet...</p>}
+                                            </div>
+
+                                            <div className="w-full h-px bg-white/10" />
+
+                                            <div className="flex flex-col gap-2">
+                                                <p className="text-white text-lg font-medium">{uniqueMembers.length} {uniqueMembers.length === 1 ? 'Person' : 'People'} Ready</p>
+                                                {isHost ? (
+                                                    <p className="text-sm text-pint-gold animate-pulse">You are the host.</p>
+                                                ) : (
+                                                    <p className="text-sm text-white/40 max-w-xs">Waiting for host to start...</p>
+                                                )}
+                                            </div>
+
+                                            {/* Share Button */}
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={() => {
+                                                    const url = window.location.href
+                                                    if (navigator.share) {
+                                                        navigator.share({
+                                                            title: 'Join my Fair Round',
+                                                            text: 'Vote on the fairest pub for us all!',
+                                                            url
+                                                        }).catch(() => { })
+                                                    } else {
+                                                        navigator.clipboard.writeText(url)
+                                                        setSystemMessage('Link copied to clipboard!')
+                                                    }
+                                                }}
+                                                className="text-white/60 hover:text-white bg-white/5 border border-white/10 hover:bg-white/10"
+                                            >
+                                                🔗 Invite Friends
+                                            </Button>
+
                                             {isHost ? (
-                                                <p className="text-sm text-pint-gold animate-pulse">You are the host.</p>
+                                                <Button
+                                                    variant="primary"
+                                                    size="lg"
+                                                    className="w-full mt-2 shadow-[0_0_20px_rgba(255,215,0,0.4)]"
+                                                    onClick={handleStartVoting}
+                                                    disabled={generatingAreas || uniqueMembers.length === 0}
+                                                >
+                                                    {generatingAreas ? 'Calculating...' : 'Calculate Options'}
+                                                </Button>
                                             ) : (
-                                                <p className="text-sm text-white/40 max-w-xs">Waiting for host to start...</p>
+                                                <div className="p-3 bg-white/5 rounded-lg w-full">
+                                                    <p className="text-white/50 text-sm">Host controls the round.</p>
+                                                </div>
                                             )}
                                         </div>
 
-                                        {/* Share Button */}
-                                        <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            onClick={() => {
-                                                const url = window.location.href
-                                                if (navigator.share) {
-                                                    navigator.share({
-                                                        title: 'Join my Fair Round',
-                                                        text: 'Vote on the fairest pub for us all!',
-                                                        url
-                                                    }).catch(() => { })
-                                                } else {
-                                                    navigator.clipboard.writeText(url)
-                                                    setSystemMessage('Link copied to clipboard!')
-                                                }
-                                            }}
-                                            className="text-white/60 hover:text-white bg-white/5 border border-white/10 hover:bg-white/10"
-                                        >
-                                            🔗 Invite Friends
-                                        </Button>
-
-                                        {isHost ? (
-                                            <Button
-                                                variant="primary"
-                                                size="lg"
-                                                className="w-full mt-2 shadow-[0_0_20px_rgba(255,215,0,0.4)]"
-                                                onClick={handleStartVoting}
-                                                disabled={generatingAreas || uniqueMembers.length === 0}
-                                            >
-                                                {generatingAreas ? 'Calculating...' : 'Calculate Options'}
+                                        <div className="flex justify-center gap-4">
+                                            <Button variant="ghost" className="text-white/30 hover:text-white" onClick={refreshMembers}>
+                                                ↻ Refresh
                                             </Button>
-                                        ) : (
-                                            <div className="p-3 bg-white/5 rounded-lg w-full">
-                                                <p className="text-white/50 text-sm">Host controls the round.</p>
-                                            </div>
-                                        )}
+                                        </div>
                                     </div>
+                                )
+                            })()}
+                        </>
+                    )}
+                </div>
 
-                                    <div className="flex justify-center gap-4">
-                                        <Button variant="ghost" className="text-white/30 hover:text-white" onClick={refreshMembers}>
-                                            ↻ Refresh
-                                        </Button>
-                                    </div>
-                                </div>
-                            )
-                        })()}
-                    </>
-                )}
+                <SearchPreferencesModal
+                    open={showSearchPrefs}
+                    onOpenChange={setShowSearchPrefs}
+                    isLoading={generatingAreas}
+                    onConfirm={async (prefs) => {
+                        if (!pendingWinningAreaId) return
+                        setGeneratingAreas(true)
+                        try {
+                            const minDelay = new Promise(resolve => setTimeout(resolve, 3000));
+                            // @ts-ignore - preferences handling added next
+                            await Promise.all([
+                                // @ts-ignore
+                                finalizeVoting(roundId, pendingWinningAreaId, prefs.filters, prefs.radius),
+                                minDelay
+                            ])
+                            setShowSearchPrefs(false)
+                        } catch (e) {
+
+                            console.error(e)
+                            alert('Failed to find pubs. Try again.')
+                        } finally {
+                            setGeneratingAreas(false)
+                        }
+                    }}
+                />
+                <LoadingNarrative active={generatingAreas} />
             </div>
-
-            <SearchPreferencesModal
-                open={showSearchPrefs}
-                onOpenChange={setShowSearchPrefs}
-                isLoading={generatingAreas}
-                onConfirm={async (prefs) => {
-                    if (!pendingWinningAreaId) return
-                    setGeneratingAreas(true)
-                    try {
-                        const minDelay = new Promise(resolve => setTimeout(resolve, 3000));
-                        // @ts-ignore - preferences handling added next
-                        await Promise.all([
-                            // @ts-ignore
-                            finalizeVoting(roundId, pendingWinningAreaId, prefs.filters, prefs.radius),
-                            minDelay
-                        ])
-                        setShowSearchPrefs(false)
-                    } catch (e) {
-
-                        console.error(e)
-                        alert('Failed to find pubs. Try again.')
-                    } finally {
-                        setGeneratingAreas(false)
-                    }
-                }}
-            />
-            <LoadingNarrative active={generatingAreas} />
-        </div>
+        </APIProvider >
     )
 }

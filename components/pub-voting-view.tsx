@@ -39,18 +39,20 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
         if (!mapRef.current || pubs.length === 0) return;
 
         const bounds = new google.maps.LatLngBounds();
+        let validPoints = 0;
+
         pubs.forEach(pub => {
-            if (pub.location) {
-                bounds.extend(pub.location);
+            if (pub.location && typeof pub.location.lat === 'number' && typeof pub.location.lng === 'number') {
+                if (pub.location.lat !== 0 || pub.location.lng !== 0) {
+                    bounds.extend(pub.location);
+                    validPoints++;
+                }
             }
         });
 
-        // Add some padding by extending bounds slightly or relying on map padding?
-        // Let's just fitBounds.
-        mapRef.current.fitBounds(bounds);
-
-        // Optional: pan to selected if bounds are huge? No, "Show all candidates initially" was the request.
-        // We can just rely on user interaction after.
+        if (validPoints > 0) {
+            mapRef.current.fitBounds(bounds);
+        }
     }, [pubs, mapRef]);
 
     // Vote Counts
@@ -322,6 +324,15 @@ export function PubVotingView({ pubs, round, currentUserId, members = [], onVote
                     <Button variant="ghost" onClick={onBack} className="text-white/30 hover:text-white text-xs">
                         ← Undo: Back to Area Selection
                     </Button>
+                </div>
+            )}
+
+            {/* Waiting Message for Guest */}
+            {hasVoted && !isHost && !readOnly && (
+                <div className="fixed bottom-0 left-0 right-0 p-4 bg-charcoal/95 backdrop-blur border-t border-white/10 flex justify-center z-50 animate-slide-up">
+                    <p className="text-pint-gold text-sm font-bold animate-pulse">
+                        Waiting for host to confirm...
+                    </p>
                 </div>
             )}
         </div>

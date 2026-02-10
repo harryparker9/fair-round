@@ -51,9 +51,20 @@ export function useGeocodedNames(members: PartyMember[]) {
         }
 
         if (members.length > 0) {
-            fetchLocationNames()
+            if (typeof google !== 'undefined') {
+                fetchLocationNames()
+            } else {
+                // Poll for Google API (it might be loading in background via APIProvider)
+                const interval = setInterval(() => {
+                    if (typeof google !== 'undefined') {
+                        clearInterval(interval)
+                        fetchLocationNames()
+                    }
+                }, 500)
+                return () => clearInterval(interval)
+            }
         }
-    }, [members]) // Re-run if members change
+    }, [members])
 
     const getLocality = (result: google.maps.GeocoderResult) => {
         return result.address_components.find(c => c.types.includes('neighborhood'))?.long_name

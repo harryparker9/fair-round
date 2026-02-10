@@ -87,9 +87,9 @@ export default function Home() {
                 </button>
               </div>
 
-              <div className="mt-12 md:mt-24 pb-8 flex flex-col items-center gap-2 text-white/40 animate-bounce cursor-pointer hover:text-white transition-colors z-30"
+              <div className="mt-12 md:mt-24 pb-8 flex flex-col items-center gap-2 text-white/40 animate-bounce cursor-pointer hover:text-pint-gold transition-colors z-30"
                 onClick={() => document.getElementById('meet-arnie')?.scrollIntoView({ behavior: 'smooth' })}>
-                <span className="text-xs uppercase tracking-[0.2em] font-medium">Learn More</span>
+                <span className="text-xs uppercase tracking-[0.2em] font-medium text-pint-gold">Meet Arnie</span>
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14" /><path d="m19 12-7 7-7-7" /></svg>
               </div>
             </div>
