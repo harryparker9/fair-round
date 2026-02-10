@@ -50,7 +50,8 @@ export async function startAreaVoting(roundId: string) {
         console.error("Area Voting Critical Error:", e)
         // Attempt to clear loading state if failed
         try {
-            await supabaseAdmin.from('rounds').update({ settings: { is_calculating: false } }).eq('id', roundId)
+            const db = supabaseAdmin || supabase
+            await db.from('rounds').update({ settings: { is_calculating: false } }).eq('id', roundId)
         } catch (cleanupErr) {
             console.error("Failed to cleanup loading state", cleanupErr)
         }
