@@ -270,7 +270,13 @@ export const triangulationService = {
         }
 
         // D. REALITY CHECK (TfL Race)
-        const scoredStations = await Promise.all(candidates.slice(0, 10).map(async (station) => {
+        // OPTIMIZATION: Limit to Top 5 candidates to save API quota and prevent timeouts
+        const topCandidatesToCheck = candidates.slice(0, 5);
+
+        // OPTIMIZATION: Process in chunks of 5 (or just 1 station at a time) to avoid rate limiting
+        // We will process stations sequentially, but membres in parallel for that station.
+        const scoredStations = [];
+        for (const station of topCandidatesToCheck) {
             let totalTime = 0;
             let maxTotalTime = 0;
             const travelTimes: Record<string, {
@@ -297,10 +303,7 @@ export const triangulationService = {
                     durationHome = params?.duration || durationTo;
                     summaryHome = params?.summary || "Direct";
                 } else {
-                    // Even if same, fetch reverse summary for detailed view?
-                    // Optimization: Use outbound summary reversed logic? No, let's fetch for accuracy as requested.
                     const params = await transportService.getJourneyDetails({ lat: station.lat, lng: station.lng }, member.endLocation!);
-                    // durationHome might be slightly different due to schedules
                     durationHome = params?.duration || durationTo;
                     summaryHome = params?.summary || "Direct";
                 }
@@ -337,7 +340,7 @@ export const triangulationService = {
             let score = totalTime;
             if (maxTotalTime > 90) score += (maxTotalTime - 90) * 10; // Heavy penalty for stragglers
 
-            return {
+            scoredStations.push({
                 id: station.id,
                 name: station.name,
                 description: `Zone ${station.zone || '?'} • ${station.lines?.[0] || 'Transport'}`,
@@ -346,8 +349,11 @@ export const triangulationService = {
                 travel_times: travelTimes,
                 fairness_score: score,
                 total_time: totalTime
-            };
-        }));
+            });
+
+            // Small delay between stations to be nice to API
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
 
         const validScored = scoredStations.filter(s => s.total_time > 0).sort((a, b) => a.fairness_score - b.fairness_score);
 
@@ -400,25 +406,29 @@ export const triangulationService = {
         const resolvedMembers = await Promise.all(members.map(async (m) => {
             let startLoc = m.location;
             let endLoc = m.location; // Default to 'same'
+            let startName = 'Unknown';
+            let endName = 'Same';
 
             // Resolve Start
             if (m.start_location_type === 'station' && m.start_station_id) {
-                const { data: s } = await supabase.from('stations').select('lat, lng').eq('id', m.start_station_id).single()
-                if (s) startLoc = { lat: s.lat, lng: s.lng, address: 'Start Station' };
+                const { data: s } = await supabase.from('stations').select('name, lat, lng').eq('id', m.start_station_id).single()
+                if (s) { startLoc = { lat: s.lat, lng: s.lng }; startName = s.name; }
+            } else if (m.start_location_type === 'live' || m.start_location_type === 'custom') {
+                startName = m.location?.address || `Pin (${m.location?.lat.toFixed(2)})`;
             }
 
             // Resolve End
             if (m.end_location_type === 'station' && m.end_station_id) {
-                const { data: s } = await supabase.from('stations').select('lat, lng').eq('id', m.end_station_id).single()
-                if (s) endLoc = { lat: s.lat, lng: s.lng, address: 'End Station' };
+                const { data: s } = await supabase.from('stations').select('name, lat, lng').eq('id', m.end_station_id).single()
+                if (s) { endLoc = { lat: s.lat, lng: s.lng }; endName = s.name; }
             } else if (m.end_location_type === 'custom' && m.end_lat && m.end_lng) {
-                endLoc = { lat: m.end_lat, lng: m.end_lng, address: 'Custom End' };
+                endLoc = { lat: m.end_lat, lng: m.end_lng }; endName = 'Custom Return';
             } else {
                 // if 'same' or 'live', end is start
                 endLoc = startLoc;
             }
 
-            return { ...m, location: startLoc, endLocation: endLoc }
+            return { ...m, location: startLoc, endLocation: endLoc, startName, endName }
         }))
 
         const activeMembers = resolvedMembers.filter(m => m.status === 'ready' && m.location && (m.location.lat !== 0 || m.location.lng !== 0));
@@ -450,38 +460,65 @@ export const triangulationService = {
             .slice(0, 15);
 
         // B. Race them (Total Travel Time)
-        const scoredStations = await Promise.all(candidates.map(async (station) => {
+        // Process in chunks to avoid API rate limits
+        const scoredStations = [];
+        for (const station of candidates) {
             let totalTime = 0;
             let maxTotalTime = 0; // The longest single person's night
-            const travelTimes: Record<string, { to: number, home: number }> = {};
+            const travelTimes: Record<string, {
+                to: number;
+                home: number;
+                summary_to?: string;
+                summary_home?: string;
+                start_name?: string;
+                end_name?: string;
+            }> = {};
 
             const journeyPromises = activeMembers.map(async (member) => {
                 // 1. To Venue
                 const detailsTo = await transportService.getJourneyDetails(member.location!, { lat: station.lat, lng: station.lng });
                 const durationTo = detailsTo?.duration || 0;
+                const summaryTo = detailsTo?.summary || "Direct";
 
                 // 2. To Home (Venue -> EndLoc)
                 let durationHome = durationTo;
+                let summaryHome = "Same as outbound";
 
                 const isDifferent = Math.abs(member.location!.lat - member.endLocation!.lat) > 0.001 || Math.abs(member.location!.lng - member.endLocation!.lng) > 0.001;
 
                 if (isDifferent) {
                     const params = await transportService.getJourneyDetails({ lat: station.lat, lng: station.lng }, member.endLocation!);
                     durationHome = params?.duration || durationTo;
+                    summaryHome = params?.summary || "Direct";
+                } else {
+                    const params = await transportService.getJourneyDetails({ lat: station.lat, lng: station.lng }, member.endLocation!);
+                    durationHome = params?.duration || durationTo;
+                    summaryHome = params?.summary || "Direct";
                 }
 
                 return {
                     id: member.id,
                     name: member.name,
+                    startName: member.startName,
+                    endName: member.endName,
                     to: durationTo || 0,
-                    home: durationHome || 0
+                    home: durationHome || 0,
+                    summaryTo,
+                    summaryHome
                 };
             });
 
             const results = await Promise.all(journeyPromises);
 
             results.forEach(res => {
-                travelTimes[res.name] = { to: res.to, home: res.home };
+                travelTimes[res.name] = {
+                    to: res.to,
+                    home: res.home,
+                    summary_to: res.summaryTo,
+                    summary_home: res.summaryHome,
+                    start_name: res.startName,
+                    end_name: res.endName
+                };
                 const personTotal = res.to + res.home;
                 totalTime += personTotal;
                 if (personTotal > maxTotalTime) maxTotalTime = personTotal;
@@ -492,7 +529,7 @@ export const triangulationService = {
             // Penalty for anyone having > 90 mins total travel
             if (maxTotalTime > 90) score += (maxTotalTime - 90) * 5;
 
-            return {
+            scoredStations.push({
                 id: station.id,
                 name: station.name,
                 description: `Zone ${station.zone || '?'} • ${station.lines?.[0] || 'Transport'}`,
@@ -501,14 +538,17 @@ export const triangulationService = {
                 travel_times: travelTimes,
                 fairness_score: score,
                 total_time: totalTime
-            };
-        }));
+            });
+
+            // Small delay
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
 
 
 
         // Deduplicate: Filter stations that are too close to a better-ranked station
         const uniqueStations: typeof scoredStations = [];
-        const sortedCandidates = scoredStations.sort((a, b) => a.fairness_score - b.fairness_score);
+        const sortedCandidates = scoredStations.filter(s => s.total_time > 0).sort((a, b) => a.fairness_score - b.fairness_score);
 
         for (const candidate of sortedCandidates) {
             // Check if this candidate is within 300m of any already accepted candidate
@@ -549,12 +589,34 @@ export const triangulationService = {
         // This is the "Verification" step basically. 
         // User picked "Waterloo". Now we show pubs near Waterloo.
 
+        const activeMembers = members.filter(m => m.status === 'ready' && m.location);
+
         // 1. Search Google Places (Paid, but only 1 call now!)
         const pubsResponse = await maps.searchNearbyPubs(stationLocation, radius, filters); // Dynamic Radius
         const results = pubsResponse.data.results.slice(0, 10);
 
-        // 2. Vibe Check (Google)
-        const enhancedPubs = await Promise.all(results.map(async (place) => {
+        if (results.length === 0) return [];
+
+        // 2. Calculate Travel Times (Matrix)
+        const origins = activeMembers.map(m => `${m.location!.lat},${m.location!.lng}`);
+        const destinations = results.map(c => `${c.geometry?.location.lat},${c.geometry?.location.lng}`);
+
+        let matrix: any = null;
+        let walkingMatrix: any = null;
+
+        if (origins.length > 0 && destinations.length > 0) {
+            try {
+                [matrix, walkingMatrix] = await Promise.all([
+                    maps.getDistances(origins, destinations, 'transit'),
+                    maps.getDistances(origins, destinations, 'walking')
+                ]);
+            } catch (e) {
+                console.error("Matrix API Error in findPubsNearStation:", e);
+            }
+        }
+
+        // 3. Vibe Check (Google) & Process Times
+        const enhancedPubs = await Promise.all(results.map(async (place, index) => {
             // Fetch rich details
             const details = await maps.getPlaceDetails(place.place_id!);
 
@@ -571,20 +633,55 @@ export const triangulationService = {
                 }
             }
 
+            // Calculate Times
+            let totalTime = 0;
+            let maxTotalTime = 0;
+            const travelTimes: Record<string, { to: number, home: number }> = {};
+
+            activeMembers.forEach((member, mIndex) => {
+                // Get Transit Time
+                let time = 999;
+                if (matrix?.data?.rows?.[mIndex]?.elements?.[index]?.duration?.value) {
+                    time = matrix.data.rows[mIndex].elements[index].duration.value / 60;
+                }
+
+                // Get Walking Time
+                let walkTime = 999;
+                if (walkingMatrix?.data?.rows?.[mIndex]?.elements?.[index]?.duration?.value) {
+                    walkTime = walkingMatrix.data.rows[mIndex].elements[index].duration.value / 60;
+                }
+
+                // Best time TO venue
+                const bestTimeTo = Math.min(time, walkTime);
+                const durationTo = Math.round(bestTimeTo === 999 ? 0 : bestTimeTo);
+
+                // Estimate Return (Symmetric for now)
+                const durationHome = durationTo;
+
+                travelTimes[member.id] = { to: durationTo, home: durationHome };
+                const personTotal = durationTo + durationHome;
+                totalTime += personTotal;
+                if (personTotal > maxTotalTime) maxTotalTime = personTotal;
+            });
+
+            // Calculate Score
+            let score = totalTime;
+            if (maxTotalTime > 90) score += (maxTotalTime - 90) * 5;
+
             return {
                 place_id: place.place_id!,
                 name: place.name!,
                 rating: place.rating || 0,
                 vicinity: place.vicinity!,
                 vibe_summary: vibe,
-                travel_times: {},
-                total_travel_time: 0,
-                fairness_score: 0,
+                travel_times: travelTimes,
+                total_travel_time: totalTime,
+                fairness_score: score, // Populate score
                 location: place.geometry?.location
             };
         }));
 
-        return enhancedPubs;
+        return enhancedPubs.sort((a, b) => a.fairness_score - b.fairness_score);
     },
 
     // 4. Helper: Get Nearest Station (for UI Confirmation)
