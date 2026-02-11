@@ -208,14 +208,29 @@ export const triangulationService = {
                 const { data: s } = await supabase.from('stations').select('*').eq('id', m.start_station_id).single()
                 if (s) { startLoc = { lat: s.lat, lng: s.lng }; startName = s.name; }
             } else if (m.start_location_type === 'live' || m.start_location_type === 'custom') {
-                startName = m.location?.address || `Pin (${m.location?.lat.toFixed(2)})`;
+                // Server-side Geocoding for Arnie
+                if (m.location && (m.location.lat !== 0 || m.location.lng !== 0)) {
+                    // Try to get a nice name if address is missing or generic
+                    if (!m.location.address || m.location.address.startsWith('Pin') || m.location.address === 'Pinned Location') {
+                        const areaName = await maps.getNeighborhood(m.location.lat, m.location.lng);
+                        startName = `Near ${areaName}`;
+                    } else {
+                        startName = m.location.address;
+                    }
+                }
             }
 
             if (m.end_location_type === 'station' && m.end_station_id) {
                 const { data: s } = await supabase.from('stations').select('*').eq('id', m.end_station_id).single()
                 if (s) { endLoc = { lat: s.lat, lng: s.lng }; endName = s.name; }
             } else if (m.end_location_type === 'custom') {
-                endLoc = { lat: m.end_lat!, lng: m.end_lng! }; endName = 'Custom Return';
+                if (m.end_lat && m.end_lng) {
+                    endLoc = { lat: m.end_lat!, lng: m.end_lng! };
+                    const areaName = await maps.getNeighborhood(m.end_lat, m.end_lng);
+                    endName = `Near ${areaName}`;
+                } else {
+                    endName = 'Custom Return';
+                }
             } else {
                 endLoc = startLoc;
             }
@@ -271,7 +286,7 @@ export const triangulationService = {
             }
 
             // Backoff if not last attempt
-            if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 1500));
+            if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 500));
         }
 
         // FALLBACK: If AI returned nothing valid (or failed), use Math Shortlist

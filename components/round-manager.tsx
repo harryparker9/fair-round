@@ -641,12 +641,10 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                                                         endText = "Returns to Start"
                                                     } else {
                                                         const name = getEndName(member)
-                                                        // FIX: If the hook keeps returning "Custom Location", explicitly check if we have a better name in the hook's internal state?
-                                                        // Actually, let's just use what the hook gives. The hook defaults to "Custom Location".
-                                                        // If we want "Near X", the hook needs to provide it.
-                                                        // If the hook provides "Near X", name will be "Near X".
-                                                        // If name is "Custom Location", we default to that.
-                                                        endText = name || 'Different Return'
+                                                        // FIX: Prioritize geocoded name
+                                                        // If hook returns "Custom Location" (default), we might still want that.
+                                                        // But if hook has a real name, use it.
+                                                        endText = (name && name !== 'Custom Location') ? name : 'Different Return'
                                                     }
 
                                                     return (

@@ -53,10 +53,9 @@ export function PartyMemberRoster({ members, isOpen, onClose, isHost, roundHostI
                         let endText = 'Returns to Start'
                         if (member.end_location_type === 'station') {
                             endText = stationNames[member.end_station_id] || 'Station Base'
-                        } else if (member.end_location_type === 'same') {
                             endText = 'Returns to Start'
                             const name = getEndName(member)
-                            endText = name || 'Different Return'
+                            endText = (name && name !== 'Custom Location') ? name : 'Different Return'
                         }
 
                         return (
