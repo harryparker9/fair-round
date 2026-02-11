@@ -1,53 +1,50 @@
+import dotenv from "dotenv";
+dotenv.config({ path: ".env.local" });
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import fs from 'fs';
-import path from 'path';
 
-// Manual .env.local parsing
-const envPath = path.resolve(process.cwd(), '.env.local');
-let apiKey = '';
+async function testGemini() {
+    console.log("Testing Gemini API...");
 
-try {
-    const envContent = fs.readFileSync(envPath, 'utf-8');
-    const match = envContent.match(/GOOGLE_GENERATIVE_AI_API_KEY=(.*)/);
-    if (match) {
-        apiKey = match[1].trim();
-    }
-} catch (e) {
-    console.error("Could not read .env.local", e);
-}
-
-async function listModels() {
+    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
     if (!apiKey) {
-        console.error("No API key found in .env.local");
+        console.error("❌ API Key not found in environment variables.");
         return;
     }
-
-    console.log("Using API Key:", apiKey.substring(0, 10) + "...");
+    console.log("✅ API Key found (starts with: " + apiKey.substring(0, 5) + "...)");
 
     try {
-        console.log("Fetching available models via REST API...");
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+        const genAI = new GoogleGenerativeAI(apiKey);
+        // const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
+        // console.log("Sending prompt to gemini-1.5-flash...");
+        // const result = await model.generateContent("Say hello to 'Fair Round' app test.");
+        // const response = await result.response;
+        // console.log("✅ API Response:", response.text());
+
+        console.log("Fetching available models...");
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
         if (!response.ok) {
-            console.log(`HTTP Error: ${response.status} ${response.statusText}`);
-            const text = await response.text();
-            console.log("Response:", text);
-        } else {
-            const data = await response.json();
-            console.log("Available Models:");
-            if (data.models) {
-                data.models.forEach((m: any) => {
-                    if (m.supportedGenerationMethods?.includes("generateContent")) {
-                        console.log(` - ${m.name.replace('models/', '')}`);
-                    }
-                });
-            } else {
-                console.log("No models found.");
-            }
+            throw new Error(`Failed to list models: ${response.statusText}`);
         }
-    } catch (e: any) {
-        console.error("Fetch Error:", e.message);
+        const data = await response.json();
+        // console.log("Available Models:", JSON.stringify(data, null, 2));
+
+        const validModels = (data.models || []).filter((m: any) =>
+            m.supportedGenerationMethods.includes("generateContent") &&
+            (m.name.includes("flash") || m.name.includes("pro") || m.name.includes("1.5"))
+        );
+
+        console.log("✅ Valid Text Models Found:", validModels.map((m: any) => m.name));
+
+        console.log("Attempting 'gemini-2.5-flash'...");
+        const model2 = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const result2 = await model2.generateContent("Say hello.");
+        console.log("✅ gemini-2.5-flash worked! Response:", result2.response.text());
+    } catch (error: any) {
+        console.error("❌ Gemini API Error:");
+        console.error(error);
+        if (error.cause) console.error("Cause:", error.cause);
     }
 }
 
-listModels();
+testGemini();
