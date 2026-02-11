@@ -438,10 +438,14 @@ export const triangulationService = {
                 ai_rationale: rationale,
                 scoring: {
                     avg_time: Math.round(s.total_time / Math.max(1, activeMembers.length)),
-                    max_time: Math.max(...Object.values(s.travel_times).map(t => t.to + t.home)),
+                    max_time: Math.max(...(Object.values(s.travel_times) as { to: number, home: number }[]).map(t => t.to + t.home)),
                     total_time: s.total_time,
                     penalty: s.fairness_score - s.total_time,
-                    outlier_name: Object.entries(s.travel_times).sort((a, b) => (b[1].to + b[1].home) - (a[1].to + a[1].home))[0]?.[0]
+                    outlier_name: Object.entries(s.travel_times).sort((a, b) => {
+                        const tA = a[1] as { to: number, home: number };
+                        const tB = b[1] as { to: number, home: number };
+                        return (tB.to + tB.home) - (tA.to + tA.home);
+                    })[0]?.[0]
                 }
             };
         });
