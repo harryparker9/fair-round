@@ -298,90 +298,110 @@ export const triangulationService = {
             return { strategy, recommendations: mathResults };
         }
 
-        // D. REALITY CHECK (TfL Race)
+        // D. REALITY CHECK (TfL Race) -> Replaced with Matrix Batching
         // OPTIMIZATION: Limit to Top 5 candidates to save API quota and prevent timeouts
         const topCandidatesToCheck = candidates.slice(0, 5);
 
-        // OPTIMIZATION: Process in chunks of 5 (or just 1 station at a time) to avoid rate limiting
-        // We will process stations sequentially, but membres in parallel for that station.
-        const scoredStations = [];
-        for (const station of topCandidatesToCheck) {
-            let totalTime = 0;
-            let maxTotalTime = 0;
-            const travelTimes: Record<string, {
-                to: number;
-                home: number;
-                summary_to?: string;
-                summary_home?: string;
-                start_name?: string;
-                end_name?: string;
-            }> = {};
+        const scoredStations: any[] = [];
 
-            const journeyPromises = activeMembers.map(async (member) => {
-                const detailsTo = await transportService.getJourneyDetails(member.location!, { lat: station.lat, lng: station.lng });
-                const durationTo = detailsTo?.duration || 0;
-                const summaryTo = detailsTo?.summary || "Direct";
+        // PREPARATION: Batch Requests
+        if (topCandidatesToCheck.length > 0 && activeMembers.length > 0) {
+            const memberOrigins = activeMembers.map(m => `${m.location!.lat},${m.location!.lng}`);
+            const stationDestinations = topCandidatesToCheck.map(s => `${s.lat},${s.lng}`);
 
-                // Estimate Return
-                let durationHome = durationTo;
-                let summaryHome = "Same as outbound";
+            // 1. OUTBOUND: Members -> Stations
+            // 2. RETURN: Stations -> Members (or their End Locations)
 
-                // If end location is significantly different
-                if (member.endLocation && (Math.abs(member.location!.lat - member.endLocation.lat) > 0.001 || Math.abs(member.location!.lng - member.endLocation.lng) > 0.001)) {
-                    const params = await transportService.getJourneyDetails({ lat: station.lat, lng: station.lng }, member.endLocation);
-                    durationHome = params?.duration || durationTo;
-                    summaryHome = params?.summary || "Direct";
-                } else {
-                    const params = await transportService.getJourneyDetails({ lat: station.lat, lng: station.lng }, member.endLocation!);
-                    durationHome = params?.duration || durationTo;
-                    summaryHome = params?.summary || "Direct";
-                }
+            // Note: For Return, if end location differs significantly, we need a separate matrix.
+            // To keep it simple and fast (2 calls max):
+            // We'll treat return as "Station -> End Location".
+            // If End == Start (most common), we can reuse MemberOrigins as Destinations for return?
+            // Actually, Matrix API is Origins -> Destinations.
+            // Return Trip: Origin = Station, Destination = Member End Loc.
 
-                return {
-                    id: member.id,
-                    name: member.name,
-                    startName: member.startName,
-                    endName: member.endName,
-                    to: durationTo,
-                    home: durationHome,
-                    summaryTo,
-                    summaryHome
-                };
+            const memberEndDestinations = activeMembers.map(m =>
+                m.endLocation ? `${m.endLocation.lat},${m.endLocation.lng}` : `${m.location!.lat},${m.location!.lng}`
+            );
+
+            let outboundMatrix: any = null;
+            let returnMatrix: any = null;
+
+            try {
+                console.log(`Batching Matrix Calls for ${activeMembers.length} members x ${topCandidatesToCheck.length} stations...`);
+
+                [outboundMatrix, returnMatrix] = await Promise.all([
+                    maps.getDistances(memberOrigins, stationDestinations, 'transit'),
+                    maps.getDistances(stationDestinations, memberEndDestinations, 'transit')
+                ]);
+
+            } catch (e) {
+                console.error("Matrix Batch Failed:", e);
+                // Fallback to 0s or empty logic handled below
+            }
+
+            // PROCESS RESULTS
+            topCandidatesToCheck.forEach((station, sIdx) => {
+                let totalTime = 0;
+                let maxTotalTime = 0;
+                const travelTimes: Record<string, any> = {};
+
+                activeMembers.forEach((member, mIdx) => {
+                    // Outbound: Member (Row mIdx) -> Station (Col sIdx)
+                    let durationTo = 0;
+                    let summaryTo = "Transit";
+
+                    if (outboundMatrix?.data?.rows?.[mIdx]?.elements?.[sIdx]) {
+                        const el = outboundMatrix.data.rows[mIdx].elements[sIdx];
+                        if (el.status === 'OK') {
+                            durationTo = Math.round(el.duration.value / 60);
+                            // Summary not available in Matrix, imply "Transit"
+                        }
+                    }
+
+                    // Return: Station (Row sIdx) -> Member End (Col mIdx)
+                    let durationHome = 0;
+                    let summaryHome = "Transit";
+
+                    if (returnMatrix?.data?.rows?.[sIdx]?.elements?.[mIdx]) {
+                        const el = returnMatrix.data.rows[sIdx].elements[mIdx];
+                        if (el.status === 'OK') {
+                            durationHome = Math.round(el.duration.value / 60);
+                        }
+                    }
+
+                    // Fallback if Matrix failed (0s) -> Penalize or keep as 0? 
+                    // Better to keep as 0 but maybe flag it? 
+                    // For now, raw data.
+
+                    travelTimes[member.name] = {
+                        to: durationTo,
+                        home: durationHome,
+                        summary_to: summaryTo,
+                        summary_home: summaryHome,
+                        start_name: member.startName,
+                        end_name: member.endName
+                    };
+
+                    const personTotal = durationTo + durationHome;
+                    totalTime += personTotal;
+                    if (personTotal > maxTotalTime) maxTotalTime = personTotal;
+                });
+
+                // Fairness Score
+                let score = totalTime;
+                if (maxTotalTime > 90) score += (maxTotalTime - 90) * 5;
+
+                scoredStations.push({
+                    id: station.id,
+                    name: station.name,
+                    description: `Zone ${station.zone || '?'} • ${station.lines?.[0] || 'Transport'}`,
+                    lat: station.lat,
+                    lng: station.lng,
+                    travel_times: travelTimes,
+                    fairness_score: score,
+                    total_time: totalTime
+                });
             });
-
-            const results = await Promise.all(journeyPromises);
-
-            results.forEach(res => {
-                travelTimes[res.name] = {
-                    to: res.to,
-                    home: res.home,
-                    summary_to: res.summaryTo,
-                    summary_home: res.summaryHome,
-                    start_name: res.startName,
-                    end_name: res.endName
-                };
-                const personTotal = res.to + res.home;
-                totalTime += personTotal;
-                if (personTotal > maxTotalTime) maxTotalTime = personTotal;
-            });
-
-            // Math Score (Lower is better)
-            let score = totalTime;
-            if (maxTotalTime > 90) score += (maxTotalTime - 90) * 10; // Heavy penalty for stragglers
-
-            scoredStations.push({
-                id: station.id,
-                name: station.name,
-                description: `Zone ${station.zone || '?'} • ${station.lines?.[0] || 'Transport'}`,
-                lat: station.lat,
-                lng: station.lng,
-                travel_times: travelTimes,
-                fairness_score: score,
-                total_time: totalTime
-            });
-
-            // Small delay between stations to be nice to API
-            await new Promise(resolve => setTimeout(resolve, 200));
         }
 
         const validScored = scoredStations.filter(s => s.total_time > 0).sort((a, b) => a.fairness_score - b.fairness_score);
