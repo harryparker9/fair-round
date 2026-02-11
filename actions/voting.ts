@@ -5,9 +5,6 @@ import { supabaseAdmin } from "@/lib/supabase-admin" // Import admin client
 import { triangulationService } from "@/services/triangulation"
 import { triangulateRound } from "./triangulate"
 
-// Configure Vercel Server Action Timeout
-export const maxDuration = 60;
-
 // 1. Host starts the voting logic
 export async function startAreaVoting(roundId: string) {
     try {

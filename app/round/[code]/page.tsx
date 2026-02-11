@@ -2,6 +2,10 @@ import { RoundManager } from "@/components/round-manager"
 import { supabase } from "@/lib/supabase"
 import { notFound } from "next/navigation"
 
+
+// Allow 60 seconds for server actions on this page (AI Triangulation)
+export const maxDuration = 60;
+
 export default async function RoundPage({ params }: { params: Promise<{ code: string }> }) {
     const { code } = await params
 
