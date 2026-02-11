@@ -130,11 +130,16 @@ export const gemini = {
             const result = await model.generateContent(prompt, { timeout: 15000 });
             const text = result.response.text();
             const jsonMatch = text.match(/\[[\s\S]*\]/);
-            if (!jsonMatch) return [];
+            if (!jsonMatch) throw new Error("Invalid JSON response from AI");
             return JSON.parse(jsonMatch[0]);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Gemini Scout Error:", error);
-            return [];
+            // Throw specific error for UI to catch
+            if (error.message?.includes("timeout")) throw new Error("AI Timeout (15s limit reached)");
+            if (error.message?.includes("API key")) throw new Error("Invalid API Key");
+            if (error.status === 429) throw new Error("AI Quota Exceeded");
+            if (error.status === 503) throw new Error("AI Service Unavailable");
+            throw new Error(`AI Error: ${error.message?.substring(0, 50) || "Unknown"}`);
         }
     },
 

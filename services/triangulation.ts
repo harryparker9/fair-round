@@ -238,6 +238,7 @@ export const triangulationService = {
         let candidates: any[] = [];
 
         // Retry Loop for AI Reliability
+        let lastError = "Unknown Error";
         for (let attempt = 1; attempt <= 3; attempt++) {
             try {
                 console.log(`Scouting stations (Attempt ${attempt}/3)...`);
@@ -262,9 +263,11 @@ export const triangulationService = {
                     if (candidates.length >= 3) break; // Success!
                 } else {
                     console.warn(`Attempt ${attempt} yielded no suggestions.`);
+                    lastError = "AI returned no valid suggestions";
                 }
-            } catch (e) {
+            } catch (e: any) {
                 console.error(`AI Scout Attempt ${attempt} Failed:`, e);
+                lastError = e.message || "Unknown AI Error";
             }
 
             // Backoff if not last attempt
@@ -274,7 +277,7 @@ export const triangulationService = {
         // FALLBACK: If AI returned nothing valid (or failed), use Math Shortlist
         if (candidates.length < 3) {
             console.log("AI Scout yielded too few results. Fallback to Math.");
-            strategy += " (AI Scout unavailable, falling back to mathematical centroid).";
+            strategy += ` (Standard optimization used. AI Issue: ${lastError}).`;
             // We invoke the math version and wrap it
             const mathResults = await triangulationService.findBestStationsMath(members);
             return { strategy, recommendations: mathResults };
