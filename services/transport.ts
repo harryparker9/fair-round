@@ -19,7 +19,7 @@ export const transportService = {
             // Map Preference to TfL Modes
             let modeParam = '';
             if (preference === 'train_only') {
-                modeParam = '&mode=tube,dlr,overground,tflrail,elizabeth-line,national-rail,walking';
+                modeParam = '&mode=tube,dlr,overground,elizabeth-line,national-rail,walking';
             } else if (preference === 'bus_only') {
                 modeParam = '&mode=bus,walking';
             }
