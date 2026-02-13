@@ -26,23 +26,30 @@ export const transportService = {
 
             // Query TfL Journey Planner
             // Default assumes all modes if param is empty
-            let url = `${BASE_URL}/Journey/JourneyResults/${fromStr}/to/${toStr}?timeIs=Departing&journeyPreference=LeastTime${modeParam}`;
+            const buildUrl = (modes: string) => `${BASE_URL}/Journey/JourneyResults/${fromStr}/to/${toStr}?timeIs=Departing&journeyPreference=LeastTime${modes}${APP_ID && APP_KEY ? `&app_id=${APP_ID}&app_key=${APP_KEY}` : ''}`;
 
-            if (APP_ID && APP_KEY) {
-                url += `&app_id=${APP_ID}&app_key=${APP_KEY}`;
-            }
-
-            const res = await fetch(url);
+            let url = buildUrl(modeParam);
+            let res = await fetch(url);
 
             if (!res.ok) {
                 console.warn(`TfL API Error: ${res.statusText}`);
                 return null; // Fail gracefully
             }
 
-            const data = await res.json();
+            let data = await res.json();
+
+            // RETRY LOGIC: If "train_only" yielded no results (e.g. need a bus to get to station), fallback to "any"
+            if ((!data.journeys || data.journeys.length === 0) && preference === 'train_only') {
+                console.log("No strictly train-only route found. Retrying with any mode...");
+                url = buildUrl(''); // No preference = all modes
+                res = await fetch(url);
+                if (res.ok) {
+                    data = await res.json();
+                }
+            }
 
             if (!data.journeys || data.journeys.length === 0) {
-                return null; // No route found
+                return null; // No route found even after retry
             }
 
             // 1. Get the best journey (TfL sorts by best usually)
