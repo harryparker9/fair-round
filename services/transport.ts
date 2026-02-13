@@ -43,11 +43,16 @@ export const transportService = {
             // 2. Extract duration (in minutes)
             const duration = bestJourney.duration;
 
-            // 3. Construct Summary (e.g. "Walk (10m) > Northern (15m)")
+            // 3. Construct Summary (e.g. "Walk to Station (10m) -> Northern line to Bank (15m)")
             const legs = bestJourney.legs.map((leg: any) => {
                 const mode = leg.mode.name === 'walking' ? 'Walk' : (leg.routeOptions?.[0]?.name || leg.mode.name);
-                const time = leg.duration;
-                return `${mode} (${time}m)`;
+                const duration = leg.duration;
+                const destination = leg.arrivalPoint?.commonName ? ` to ${leg.arrivalPoint.commonName}` : '';
+
+                // Clean up mode names
+                const cleanMode = mode.replace('London Underground', '').trim();
+
+                return `${cleanMode}${destination} (${duration}m)`;
             });
 
             return {
