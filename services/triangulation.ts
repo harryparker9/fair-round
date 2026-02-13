@@ -417,18 +417,18 @@ export const triangulationService = {
                     const tasks = top3.map(async (station) => {
                         const updates = await Promise.all(activeMembers.map(async (member) => {
                             // 1. To Venue (Safe)
-                            let summaryTo = null;
+                            let summaryTo = "Journey There";
                             try {
                                 const d = await transportService.getJourneyDetails(member.location!, { lat: station.lat, lng: station.lng });
-                                summaryTo = d?.summary;
+                                if (d?.summary) summaryTo = d.summary;
                             } catch (e) { /* ignore */ }
 
                             // 2. Return (Safe)
-                            let summaryHome = null;
+                            let summaryHome = "Return Journey";
                             try {
                                 const endLoc = member.endLocation || member.location!;
                                 const d = await transportService.getJourneyDetails({ lat: station.lat, lng: station.lng }, endLoc);
-                                summaryHome = d?.summary;
+                                if (d?.summary) summaryHome = d.summary;
                             } catch (e) { /* ignore */ }
 
                             return { memberId: member.name, summaryTo, summaryHome };
@@ -436,8 +436,8 @@ export const triangulationService = {
 
                         updates.forEach(u => {
                             if (station.travel_times[u.memberId]) {
-                                if (u.summaryTo) station.travel_times[u.memberId].summary_to = u.summaryTo;
-                                if (u.summaryHome) station.travel_times[u.memberId].summary_home = u.summaryHome;
+                                station.travel_times[u.memberId].summary_to = u.summaryTo;
+                                station.travel_times[u.memberId].summary_home = u.summaryHome;
                             }
                         });
                     });
@@ -445,8 +445,8 @@ export const triangulationService = {
                     await Promise.all(tasks);
                 };
 
-                // TIMEOUT: 4 Seconds MAX
-                const timeout = new Promise((_, reject) => setTimeout(() => reject("Enrichment Timeout"), 4000));
+                // TIMEOUT: 6 Seconds MAX
+                const timeout = new Promise((_, reject) => setTimeout(() => reject("Enrichment Timeout"), 6000));
 
                 await Promise.race([enrichmentWork(), timeout]);
                 console.log("Enrichment complete.");
