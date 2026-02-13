@@ -1,6 +1,6 @@
 'use server'
 
-export const maxDuration = 60; // Allow full 60s for calculation
+
 
 import { supabase } from "@/lib/supabase"
 import { supabaseAdmin } from "@/lib/supabase-admin" // Import admin client
