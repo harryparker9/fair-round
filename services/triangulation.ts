@@ -448,8 +448,8 @@ export const triangulationService = {
                     await Promise.all(tasks);
                 };
 
-                // TIMEOUT: 6 Seconds MAX
-                const timeout = new Promise((_, reject) => setTimeout(() => reject("Enrichment Timeout"), 6000));
+                // TIMEOUT: 12 Seconds MAX
+                const timeout = new Promise((_, reject) => setTimeout(() => reject("Enrichment Timeout"), 12000));
 
                 await Promise.race([enrichmentWork(), timeout]);
                 console.log("Enrichment complete.");
