@@ -20,17 +20,21 @@ export const maps = {
     },
 
     // Matrix for multiple origins to candidates
-    getDistances: async (origins: string[], destinations: string[], mode: 'transit' | 'walking' = 'transit') => {
+    getDistances: async (origins: string[], destinations: string[], mode: 'transit' | 'walking' = 'transit', transit_modes?: string[]) => {
         if (!key) throw new Error("Missing Google Maps API Key");
 
-        return client.distancematrix({
-            params: {
-                origins,
-                destinations,
-                mode: mode as any,
-                key
-            }
-        });
+        const params: any = {
+            origins,
+            destinations,
+            mode: mode as any,
+            key
+        };
+
+        if (mode === 'transit' && transit_modes && transit_modes.length > 0) {
+            params.transit_mode = transit_modes.join('|');
+        }
+
+        return client.distancematrix({ params });
     },
 
     // Find candidates around a point

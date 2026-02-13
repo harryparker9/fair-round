@@ -49,7 +49,7 @@ export interface PartyMember {
     round_id: string
     name: string
     photo_path?: string // from Supabase Storage
-    transport_mode: 'walking' | 'cycling' | 'transit'
+    transport_mode: 'train_only' | 'bus_only' | 'no_preference'
     status: 'pending' | 'ready' // ready = location set
     location?: {
         lat: number

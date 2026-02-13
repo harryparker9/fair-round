@@ -304,40 +304,54 @@ export const triangulationService = {
 
         const scoredStations: any[] = [];
 
-        // PREPARATION: Batch Requests
+        // PREPARATION: Batch Requests by Preference
+        const resultsMap: Record<string, { outboundElements?: any[], returnData?: { matrix: any, colIdx: number } }> = {};
+
         if (topCandidatesToCheck.length > 0 && activeMembers.length > 0) {
-            const memberOrigins = activeMembers.map(m => `${m.location!.lat},${m.location!.lng}`);
             const stationDestinations = topCandidatesToCheck.map(s => `${s.lat},${s.lng}`);
 
-            // 1. OUTBOUND: Members -> Stations
-            // 2. RETURN: Stations -> Members (or their End Locations)
+            // Group by Mode
+            const groups: Record<string, typeof activeMembers> = {
+                'train_only': [],
+                'bus_only': [],
+                'no_preference': []
+            };
 
-            // Note: For Return, if end location differs significantly, we need a separate matrix.
-            // To keep it simple and fast (2 calls max):
-            // We'll treat return as "Station -> End Location".
-            // If End == Start (most common), we can reuse MemberOrigins as Destinations for return?
-            // Actually, Matrix API is Origins -> Destinations.
-            // Return Trip: Origin = Station, Destination = Member End Loc.
+            activeMembers.forEach(m => {
+                const mode = (m.transport_mode === 'train_only' || m.transport_mode === 'bus_only') ? m.transport_mode : 'no_preference';
+                groups[mode].push(m);
+            });
 
-            const memberEndDestinations = activeMembers.map(m =>
-                m.endLocation ? `${m.endLocation.lat},${m.endLocation.lng}` : `${m.location!.lat},${m.location!.lng}`
-            );
+            // Execute Parallel Batches
+            console.log(`Executing Segmented Matrix Calls for ${activeMembers.length} members...`);
+            await Promise.all(Object.entries(groups).map(async ([mode, members]) => {
+                if (members.length === 0) return;
 
-            let outboundMatrix: any = null;
-            let returnMatrix: any = null;
+                const memberOrigins = members.map(m => `${m.location!.lat},${m.location!.lng}`);
+                const memberEndDestinations = members.map(m =>
+                    m.endLocation ? `${m.endLocation.lat},${m.endLocation.lng}` : `${m.location!.lat},${m.location!.lng}`
+                );
 
-            try {
-                console.log(`Batching Matrix Calls for ${activeMembers.length} members x ${topCandidatesToCheck.length} stations...`);
+                let transitModes: string[] | undefined = undefined;
+                if (mode === 'train_only') transitModes = ['subway', 'train', 'tram', 'rail'];
+                if (mode === 'bus_only') transitModes = ['bus'];
 
-                [outboundMatrix, returnMatrix] = await Promise.all([
-                    maps.getDistances(memberOrigins, stationDestinations, 'transit'),
-                    maps.getDistances(stationDestinations, memberEndDestinations, 'transit')
-                ]);
+                try {
+                    const [outbound, inbound] = await Promise.all([
+                        maps.getDistances(memberOrigins, stationDestinations, 'transit', transitModes),
+                        maps.getDistances(stationDestinations, memberEndDestinations, 'transit', transitModes)
+                    ]);
 
-            } catch (e) {
-                console.error("Matrix Batch Failed:", e);
-                // Fallback to 0s or empty logic handled below
-            }
+                    members.forEach((m, idx) => {
+                        resultsMap[m.id] = {
+                            outboundElements: outbound?.data?.rows?.[idx]?.elements,
+                            returnData: { matrix: inbound, colIdx: idx }
+                        };
+                    });
+                } catch (e) {
+                    console.error(`Matrix Batch Failed for ${mode}:`, e);
+                }
+            }));
 
             // PROCESS RESULTS
             topCandidatesToCheck.forEach((station, sIdx) => {
@@ -345,33 +359,22 @@ export const triangulationService = {
                 let maxTotalTime = 0;
                 const travelTimes: Record<string, any> = {};
 
-                activeMembers.forEach((member, mIdx) => {
-                    // Outbound: Member (Row mIdx) -> Station (Col sIdx)
+                activeMembers.forEach((member) => {
+                    const data = resultsMap[member.id];
+
+                    // Outbound
                     let durationTo = 0;
                     let summaryTo = "Journey There";
-
-                    if (outboundMatrix?.data?.rows?.[mIdx]?.elements?.[sIdx]) {
-                        const el = outboundMatrix.data.rows[mIdx].elements[sIdx];
-                        if (el.status === 'OK') {
-                            durationTo = Math.round(el.duration.value / 60);
-                            // Summary not available in Matrix, imply default "Journey There"
-                        }
+                    if (data?.outboundElements?.[sIdx]?.status === 'OK') {
+                        durationTo = Math.round(data.outboundElements[sIdx].duration.value / 60);
                     }
 
-                    // Return: Station (Row sIdx) -> Member End (Col mIdx)
+                    // Return
                     let durationHome = 0;
                     let summaryHome = "Return Journey";
-
-                    if (returnMatrix?.data?.rows?.[sIdx]?.elements?.[mIdx]) {
-                        const el = returnMatrix.data.rows[sIdx].elements[mIdx];
-                        if (el.status === 'OK') {
-                            durationHome = Math.round(el.duration.value / 60);
-                        }
+                    if (data?.returnData?.matrix?.data?.rows?.[sIdx]?.elements?.[data.returnData.colIdx]?.status === 'OK') {
+                        durationHome = Math.round(data.returnData.matrix.data.rows[sIdx].elements[data.returnData.colIdx].duration.value / 60);
                     }
-
-                    // Fallback if Matrix failed (0s) -> Penalize or keep as 0? 
-                    // Better to keep as 0 but maybe flag it? 
-                    // For now, raw data.
 
                     travelTimes[member.name] = {
                         to: durationTo,
@@ -419,7 +422,7 @@ export const triangulationService = {
                             // 1. To Venue (Safe)
                             let summaryTo = "Journey There";
                             try {
-                                const d = await transportService.getJourneyDetails(member.location!, { lat: station.lat, lng: station.lng });
+                                const d = await transportService.getJourneyDetails(member.location!, { lat: station.lat, lng: station.lng }, member.transport_mode);
                                 if (d?.summary) summaryTo = d.summary;
                             } catch (e) { /* ignore */ }
 
@@ -427,7 +430,7 @@ export const triangulationService = {
                             let summaryHome = "Return Journey";
                             try {
                                 const endLoc = member.endLocation || member.location!;
-                                const d = await transportService.getJourneyDetails({ lat: station.lat, lng: station.lng }, endLoc);
+                                const d = await transportService.getJourneyDetails({ lat: station.lat, lng: station.lng }, endLoc, member.transport_mode);
                                 if (d?.summary) summaryHome = d.summary;
                             } catch (e) { /* ignore */ }
 

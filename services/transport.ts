@@ -10,15 +10,23 @@ export const transportService = {
     /**
      * Get the fastest journey details (duration + summary) between two points using TfL API.
      */
-    getJourneyDetails: async (from: Coordinates, to: Coordinates): Promise<{ duration: number, summary: string } | null> => {
+    getJourneyDetails: async (from: Coordinates, to: Coordinates, preference: 'train_only' | 'bus_only' | 'no_preference' = 'no_preference'): Promise<{ duration: number, summary: string } | null> => {
         try {
             // Format: "lat,lng"
             const fromStr = `${from.lat},${from.lng}`;
             const toStr = `${to.lat},${to.lng}`;
 
+            // Map Preference to TfL Modes
+            let modeParam = '';
+            if (preference === 'train_only') {
+                modeParam = '&mode=tube,dlr,overground,tflrail,elizabeth-line,national-rail,walking';
+            } else if (preference === 'bus_only') {
+                modeParam = '&mode=bus,walking';
+            }
+
             // Query TfL Journey Planner
-            // mode: 'tube,dlr,overground,tflrail,bus,walking' (we can restrict if we want)
-            let url = `${BASE_URL}/Journey/JourneyResults/${fromStr}/to/${toStr}?timeIs=Departing&journeyPreference=LeastTime`;
+            // Default assumes all modes if param is empty
+            let url = `${BASE_URL}/Journey/JourneyResults/${fromStr}/to/${toStr}?timeIs=Departing&journeyPreference=LeastTime${modeParam}`;
 
             if (APP_ID && APP_KEY) {
                 url += `&app_id=${APP_ID}&app_key=${APP_KEY}`;

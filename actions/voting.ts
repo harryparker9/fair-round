@@ -269,7 +269,7 @@ export async function joinRoundWithReset(roundId: string, name: string, photoPat
             name,
             photo_path: photoPath,
             status: 'pending',
-            transport_mode: 'walking'
+            transport_mode: 'no_preference'
         })
         .select()
         .single()

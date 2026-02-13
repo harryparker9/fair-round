@@ -61,6 +61,9 @@ export function JoinRoundForm({ roundId, existingMembers = [], onJoin, initialDa
     const [showStartMap, setShowStartMap] = useState(false)
     const [showEndMap, setShowEndMap] = useState(false)
 
+    // Transport Preference
+    const [transportMode, setTransportMode] = useState<'train_only' | 'bus_only' | 'no_preference'>((initialData?.transport_mode as any) || 'no_preference')
+
     // Map Handlers (Now Inside Component)
     const handleMapStartConfirm = async (loc: { lat: number, lng: number }) => {
         setStatus('locating')
@@ -272,7 +275,7 @@ export function JoinRoundForm({ roundId, existingMembers = [], onJoin, initialDa
                 round_id: roundId,
                 name: name.trim(),
                 photo_path: photoPath,
-                transport_mode: 'transit',
+                transport_mode: transportMode,
                 status: 'ready',
                 location: finalLocation,
                 start_location_type: startMode,
@@ -639,6 +642,23 @@ export function JoinRoundForm({ roundId, existingMembers = [], onJoin, initialDa
                         initialCenter={selectedCustomStart ? { lat: selectedCustomStart.lat, lng: selectedCustomStart.lng } : (location || undefined)}
                     />
                 )}
+
+                {/* 4. Transport Preference */}
+                <div className="space-y-3 pt-4 border-t border-white/10">
+                    <label className="text-sm font-bold text-white block text-center">How do you travel?</label>
+                    <div className="flex bg-white/5 p-1 rounded-lg">
+                        <button type="button" onClick={() => setTransportMode('train_only')} className={cn("flex-1 py-2 text-xs rounded-md transition-all flex items-center justify-center gap-1", transportMode === 'train_only' ? "bg-white text-charcoal font-bold shadow-lg" : "text-white/60 hover:text-white")}>
+                            <Train className="w-3 h-3" /> Train Only
+                        </button>
+                        <button type="button" onClick={() => setTransportMode('bus_only')} className={cn("flex-1 py-2 text-xs rounded-md transition-all flex items-center justify-center gap-1", transportMode === 'bus_only' ? "bg-white text-charcoal font-bold shadow-lg" : "text-white/60 hover:text-white")}>
+                            {/* Bus Icon fallback to standard map pin or similar if unavailable, or text */}
+                            🚌 Bus Only
+                        </button>
+                        <button type="button" onClick={() => setTransportMode('no_preference')} className={cn("flex-1 py-2 text-xs rounded-md transition-all flex items-center justify-center gap-1", transportMode === 'no_preference' ? "bg-white text-charcoal font-bold shadow-lg" : "text-white/60 hover:text-white")}>
+                            🚀 Any
+                        </button>
+                    </div>
+                </div>
 
                 <Button
                     type="submit"
