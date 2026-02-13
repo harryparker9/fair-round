@@ -406,42 +406,55 @@ export const triangulationService = {
 
         const validScored = scoredStations.filter(s => s.total_time > 0).sort((a, b) => a.fairness_score - b.fairness_score);
 
-        // ENRICHMENT: Fetch detailed TfL strings for the top 5 candidates
-        // This replaces the generic "Transit" with "Walk to X -> Line to Y..."
-        const top5 = validScored.slice(0, 5);
-        if (top5.length > 0) {
-            console.log(`Enriching top ${top5.length} candidates with detailed route info...`);
+        // ENRICHMENT: Fetch detailed TfL strings for the top 3 candidates (SAFEGUARD)
+        const top3 = validScored.slice(0, 3);
+        if (top3.length > 0) {
+            console.log(`Enriching top ${top3.length} candidates with detailed route info...`);
 
-            // Create a list of all journey tasks to run in parallel
-            // We need to update the `travel_times` object inside each station candidate
-            const enrichmentTasks = top5.map(async (station) => {
-                const updates = await Promise.all(activeMembers.map(async (member) => {
-                    // 1. To Venue (Detailed)
-                    const detailsTo = await transportService.getJourneyDetails(member.location!, { lat: station.lat, lng: station.lng });
-                    const summaryTo = detailsTo?.summary || "Transit";
+            try {
+                // Work function
+                const enrichmentWork = async () => {
+                    const tasks = top3.map(async (station) => {
+                        const updates = await Promise.all(activeMembers.map(async (member) => {
+                            // 1. To Venue (Safe)
+                            let summaryTo = null;
+                            try {
+                                const d = await transportService.getJourneyDetails(member.location!, { lat: station.lat, lng: station.lng });
+                                summaryTo = d?.summary;
+                            } catch (e) { /* ignore */ }
 
-                    // 2. Return (Detailed) - If different end location
-                    let summaryHome = "Return Journey";
-                    // Optimization: If end is same as start, we can't strictly reuse the summary because directions are reversed 
-                    // (e.g. Walk TO station is different from Walk FROM station).
-                    // So we fetch it properly.
-                    const endLoc = member.endLocation || member.location!;
-                    const detailsHome = await transportService.getJourneyDetails({ lat: station.lat, lng: station.lng }, endLoc);
-                    summaryHome = detailsHome?.summary || "Transit";
+                            // 2. Return (Safe)
+                            let summaryHome = null;
+                            try {
+                                const endLoc = member.endLocation || member.location!;
+                                const d = await transportService.getJourneyDetails({ lat: station.lat, lng: station.lng }, endLoc);
+                                summaryHome = d?.summary;
+                            } catch (e) { /* ignore */ }
 
-                    return { memberId: member.name, summaryTo, summaryHome }; // Using name as key to match existing structure
-                }));
+                            return { memberId: member.name, summaryTo, summaryHome };
+                        }));
 
-                // Apply updates to the station object
-                updates.forEach(u => {
-                    if (station.travel_times[u.memberId]) {
-                        station.travel_times[u.memberId].summary_to = u.summaryTo;
-                        station.travel_times[u.memberId].summary_home = u.summaryHome;
-                    }
-                });
-            });
+                        updates.forEach(u => {
+                            if (station.travel_times[u.memberId]) {
+                                if (u.summaryTo) station.travel_times[u.memberId].summary_to = u.summaryTo;
+                                if (u.summaryHome) station.travel_times[u.memberId].summary_home = u.summaryHome;
+                            }
+                        });
+                    });
 
-            await Promise.all(enrichmentTasks);
+                    await Promise.all(tasks);
+                };
+
+                // TIMEOUT: 4 Seconds MAX
+                const timeout = new Promise((_, reject) => setTimeout(() => reject("Enrichment Timeout"), 4000));
+
+                await Promise.race([enrichmentWork(), timeout]);
+                console.log("Enrichment complete.");
+
+            } catch (e) {
+                console.warn("Enrichment skipped or timed out:", e);
+                // Proceed without crashing
+            }
         }
 
         // E. JUDGE (Gemini)
