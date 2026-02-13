@@ -348,19 +348,19 @@ export const triangulationService = {
                 activeMembers.forEach((member, mIdx) => {
                     // Outbound: Member (Row mIdx) -> Station (Col sIdx)
                     let durationTo = 0;
-                    let summaryTo = "Transit";
+                    let summaryTo = "Journey There";
 
                     if (outboundMatrix?.data?.rows?.[mIdx]?.elements?.[sIdx]) {
                         const el = outboundMatrix.data.rows[mIdx].elements[sIdx];
                         if (el.status === 'OK') {
                             durationTo = Math.round(el.duration.value / 60);
-                            // Summary not available in Matrix, imply "Transit"
+                            // Summary not available in Matrix, imply default "Journey There"
                         }
                     }
 
                     // Return: Station (Row sIdx) -> Member End (Col mIdx)
                     let durationHome = 0;
-                    let summaryHome = "Transit";
+                    let summaryHome = "Return Journey";
 
                     if (returnMatrix?.data?.rows?.[sIdx]?.elements?.[mIdx]) {
                         const el = returnMatrix.data.rows[sIdx].elements[mIdx];
