@@ -335,11 +335,12 @@ export function RoundManager({ roundId, code }: RoundManagerProps) {
                 setAreaOptions(res.options as AreaOption[])
                 setStage('voting')
             } else {
-                alert(`Error: ${res.error}`)
+                console.error("Voting Error:", res.error)
+                setSystemMessage("Brain freeze! 🥶 My circuits are just warming up. Give that button another click!")
             }
         } catch (err: any) {
-            console.error(err)
-            alert("Failed to start voting: " + err.message)
+            console.error("Start Voting Exception:", err)
+            setSystemMessage("Brain freeze! 🥶 My circuits are just warming up. Give that button another click!")
         } finally {
             setGeneratingAreas(false)
         }
