@@ -51,7 +51,7 @@ export default function Home() {
             <div className="min-h-[100svh] flex flex-col items-center justify-center text-center space-y-12 animate-in fade-in zoom-in duration-500 max-w-2xl w-full mx-auto p-6 md:p-0 relative z-20">
               {/* Branding & Explanation */}
               <div className="space-y-6">
-                <div className="relative w-64 h-64 md:w-80 md:h-80 mx-auto mb-4">
+                <div className="relative w-72 h-72 md:w-96 md:h-96 mx-auto mb-4">
                   <Image
                     src="/logo-stacked.png"
                     alt="Fair Round"
