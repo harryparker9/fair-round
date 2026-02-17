@@ -333,9 +333,10 @@ export function JoinRoundForm({ roundId, existingMembers = [], onJoin, initialDa
             }
 
             onJoin()
-        } catch (err) {
+            onJoin()
+        } catch (err: any) {
             console.error(err)
-            alert('Failed to save')
+            alert(`Failed to save: ${err.message || 'Unknown error'}`)
         } finally {
             setStatus('idle')
         }
