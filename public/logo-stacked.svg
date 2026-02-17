@@ -17,14 +17,17 @@
         <text x="-135" y="0">R</text>
         
         <!-- O (Pin Icon) replacement -->
-        <!-- Adjusted translation to move pin UP significantly. 
-             Old: -55, -45. 
-             New: -55, -125. 
-             Logic: Pin bulb center is ~55px from top. We want bulb center at ~-70px from baseline (mid-cap). 
-             So Top Y = -70 - 55 = -125.
+        <!-- 
+             Pin Alignment Logic:
+             - Arial x-height for size 140 is ~70px.
+             - Local Baseline is Y=0. x-height top is Y=-70. Midpoint is Y=-35.
+             - Pin Path: Starts at 0,0 (top). Bulb extends roughly from 0 to 110 (width is 110: -55 to 55).
+             - Pin Bulb vertical center is roughly at local Y=55.
+             - To align Bulb Center (55) with Text Midpoint (-35):
+             - TransY + 55 = -35  =>  TransY = -90.
         -->
-        <g transform="translate(-55, -125)">
-            <!-- Pin Body: Starts at 0,0, tip at 0,145 -->
+        <g transform="translate(-55, -90)">
+            <!-- Pin Body: Standard map pin shape -->
             <path d="M0 0C-30 0 -55 25 -55 55C-55 95 0 145 0 145C0 145 55 95 55 55C55 25 30 0 0 0Z" fill="url(#paint0_linear)"/>
             <!-- Inner Cutout -->
             <circle cx="0" cy="55" r="20" fill="#1A1A1A"/> 

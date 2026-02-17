@@ -53,7 +53,7 @@ export default function Home() {
               <div className="space-y-6">
                 <div className="relative w-64 h-64 md:w-80 md:h-80 mx-auto mb-4">
                   <Image
-                    src="/logo-stacked.png"
+                    src="/logo-stacked.svg"
                     alt="Fair Round"
                     fill
                     className="object-contain drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]"
