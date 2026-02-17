@@ -1,5 +1,7 @@
 'use client'
 
+import Image from "next/image";
+
 import { CreateRoundCard } from "@/components/create-round-card";
 import { useState, useEffect } from "react";
 import { useArnieHelp } from "@/components/arnie-help-context";
@@ -49,9 +51,15 @@ export default function Home() {
             <div className="min-h-[100svh] flex flex-col items-center justify-center text-center space-y-12 animate-in fade-in zoom-in duration-500 max-w-2xl w-full mx-auto p-6 md:p-0 relative z-20">
               {/* Branding & Explanation */}
               <div className="space-y-6">
-                <h1 className="text-7xl md:text-9xl font-black tracking-tighter text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]">
-                  Fair Round
-                </h1>
+                <div className="relative w-72 h-72 md:w-96 md:h-96 mx-auto mb-4">
+                  <Image
+                    src="/logo-stacked.png"
+                    alt="Fair Round"
+                    fill
+                    className="object-contain drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]"
+                    priority
+                  />
+                </div>
                 <div className="space-y-4 max-w-lg mx-auto">
                   <p className="text-white/90 text-xl font-medium leading-relaxed">
                     The easiest way to meet friends halfway in London.
